@@ -9,7 +9,7 @@ type Worker struct {
 type WorkerBuilder struct {
 }
 
-func (*Worker) Start() {
+func (*Worker) Start(ctx context.Context) {
 
 }
 
