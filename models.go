@@ -2,9 +2,9 @@ package lucy
 
 import (
 	"fmt"
+	"golang.org/x/xerrors"
 	"net/url"
 )
-import "golang.org/x/xerrors"
 
 type Request struct {
 	URL       string

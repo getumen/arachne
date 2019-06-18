@@ -1,6 +1,9 @@
 package lucy
 
-import "context"
+import (
+	"context"
+	"golang.org/x/xerrors"
+)
 
 type Worker struct {
 	workerQueue WorkerQueue
@@ -17,7 +20,7 @@ func (w *Worker) subscribe(ctx context.Context) (<-chan Request, error) {
 	output := make(chan Request)
 	requestChan, err := w.workerQueue.SubscribeRequests(ctx)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("fail to subscribe requests: %w", err)
 	}
 	go func() {
 		defer close(output)
@@ -35,6 +38,6 @@ func (w *Worker) subscribe(ctx context.Context) (<-chan Request, error) {
 	return output, nil
 }
 
-func (w * Worker) doRequest()  {
-	
+func (w *Worker) doRequest() {
+
 }
