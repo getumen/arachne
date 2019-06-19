@@ -2,6 +2,7 @@ package lucy
 
 import (
 	"context"
+	"golang.org/x/sync/semaphore"
 	"golang.org/x/xerrors"
 )
 
@@ -10,6 +11,7 @@ type Worker struct {
 	requestRestrictionStrategy RequestRestrictionStrategy
 	requestSemaphore           RequestSemaphore
 	logger                     Logger
+	maxRequestNum              int64
 }
 
 func newWorker(workerQueue WorkerQueue) *Worker {
@@ -43,8 +45,18 @@ func (w *Worker) doRequest(requestChan <-chan Request) (<-chan Response, error) 
 
 	// TODO: add goroutine supervisor
 	go func() {
+		workerRequestSemaphore := semaphore.NewWeighted(w.maxRequestNum)
 		for request := range requestChan {
+			ctx := context.Background()
+			err := workerRequestSemaphore.Acquire(ctx, 1)
+			if err != nil {
+				w.logger.Errorf("fail to acquire workerRequestSemaphore")
+				continue
+			}
+
 			go func(request *Request) {
+				defer workerRequestSemaphore.Release(1)
+
 				// request restriction
 				if w.requestRestrictionStrategy.CheckRestriction() {
 					resource, err := w.requestRestrictionStrategy.Resource(request)

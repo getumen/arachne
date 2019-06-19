@@ -31,7 +31,7 @@ func setupTestWorker_subscribeInfiniteChannel(t *testing.T) (chan Request, func(
 	running := true
 
 	go func() {
-		for ; running; {
+		for running {
 			retChan <- *NewGetRequest("https://golang.org/")
 		}
 	}()

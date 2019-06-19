@@ -47,8 +47,7 @@ func TestResponse_Follow(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		if actualString, actualError := tt.response.Follow(tt.link);
-			actualString != tt.expectedString || ((actualError != nil) != tt.expectedIsError) {
+		if actualString, actualError := tt.response.Follow(tt.link); actualString != tt.expectedString || ((actualError != nil) != tt.expectedIsError) {
 			t.Fatalf("test case %d: expectedString = %s, got = %s and error %v",
 				i, tt.expectedString, actualString, actualError)
 		}
