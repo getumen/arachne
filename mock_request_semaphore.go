@@ -34,41 +34,27 @@ func (m *MockRequestSemaphore) EXPECT() *MockRequestSemaphoreMockRecorder {
 }
 
 // Acquire mocks base method
-func (m *MockRequestSemaphore) Acquire(ctx context.Context, resource string, n int64) error {
+func (m *MockRequestSemaphore) Acquire(ctx context.Context, resource string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Acquire", ctx, resource, n)
+	ret := m.ctrl.Call(m, "Acquire", ctx, resource)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Acquire indicates an expected call of Acquire
-func (mr *MockRequestSemaphoreMockRecorder) Acquire(ctx, resource, n interface{}) *gomock.Call {
+func (mr *MockRequestSemaphoreMockRecorder) Acquire(ctx, resource interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Acquire", reflect.TypeOf((*MockRequestSemaphore)(nil).Acquire), ctx, resource, n)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Acquire", reflect.TypeOf((*MockRequestSemaphore)(nil).Acquire), ctx, resource)
 }
 
 // Release mocks base method
-func (m *MockRequestSemaphore) Release(resource string, n int64) {
+func (m *MockRequestSemaphore) Release(resource string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Release", resource, n)
+	m.ctrl.Call(m, "Release", resource)
 }
 
 // Release indicates an expected call of Release
-func (mr *MockRequestSemaphoreMockRecorder) Release(resource, n interface{}) *gomock.Call {
+func (mr *MockRequestSemaphoreMockRecorder) Release(resource interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Release", reflect.TypeOf((*MockRequestSemaphore)(nil).Release), resource, n)
-}
-
-// TryAcquire mocks base method
-func (m *MockRequestSemaphore) TryAcquire(resource string, n int64) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TryAcquire", resource, n)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// TryAcquire indicates an expected call of TryAcquire
-func (mr *MockRequestSemaphoreMockRecorder) TryAcquire(resource, n interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryAcquire", reflect.TypeOf((*MockRequestSemaphore)(nil).TryAcquire), resource, n)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Release", reflect.TypeOf((*MockRequestSemaphore)(nil).Release), resource)
 }
