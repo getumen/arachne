@@ -22,11 +22,12 @@ func (*DomainRestrictionStrategy) CheckRestriction() bool {
 func (*DomainRestrictionStrategy) Resource(request *Request) (string, error) {
 	urlValue, err := url.ParseRequestURI(request.URL)
 	if err != nil {
-		return "", xerrors.Errorf("request url is invalid, but this never happens: %w")
+		return "", xerrors.Errorf("request url is invalid, but this never happens: %w", err)
 	}
 	return urlValue.Host, nil
 }
 
 func (*DomainRestrictionStrategy) ChangePriorityWhenRestricted(request *Request) {
-	// DO NOTHING
+	// decrease priority
+	request.Priority += 10
 }
