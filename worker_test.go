@@ -2,12 +2,13 @@ package lucy
 
 import (
 	"context"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"golang.org/x/xerrors"
-	"testing"
 )
 
-func setupTestWorker_subscribe(t *testing.T) (chan Request, func()) {
+func setupTestWorkerSubscribe(t *testing.T) (chan Request, func()) {
 	retChan := make(chan Request)
 
 	go func() {
@@ -25,7 +26,7 @@ func setupTestWorker_subscribe(t *testing.T) (chan Request, func()) {
 	}
 }
 
-func setupTestWorker_subscribeInfiniteChannel(t *testing.T) (chan Request, func()) {
+func setupTestWorkerSubscribeInfiniteChannel(t *testing.T) (chan Request, func()) {
 	retChan := make(chan Request)
 
 	running := true
@@ -44,7 +45,7 @@ func setupTestWorker_subscribeInfiniteChannel(t *testing.T) (chan Request, func(
 
 func TestWorker_subscribeSuccess(t *testing.T) {
 
-	subscribeChan, tearDown := setupTestWorker_subscribe(t)
+	subscribeChan, tearDown := setupTestWorkerSubscribe(t)
 	defer tearDown()
 
 	ctrl := gomock.NewController(t)

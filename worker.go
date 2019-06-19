@@ -2,10 +2,12 @@ package lucy
 
 import (
 	"context"
+
 	"golang.org/x/sync/semaphore"
 	"golang.org/x/xerrors"
 )
 
+// Worker handles scheduled requests.
 type Worker struct {
 	workerQueue                WorkerQueue
 	requestRestrictionStrategy RequestRestrictionStrategy
@@ -20,6 +22,7 @@ func newWorker(workerQueue WorkerQueue) *Worker {
 	}
 }
 
+// Start kicks worker off.
 func (*Worker) Start(ctx context.Context) {
 
 }
@@ -100,5 +103,6 @@ func (w *Worker) publishRequest(requestChan <-chan Request) error {
 	return nil
 }
 
+// WorkerBuilder is the builder of Worker.
 type WorkerBuilder struct {
 }

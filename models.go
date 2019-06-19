@@ -2,10 +2,12 @@ package lucy
 
 import (
 	"fmt"
-	"golang.org/x/xerrors"
 	"net/url"
+
+	"golang.org/x/xerrors"
 )
 
+// Request is a domain model that represents http request.
 type Request struct {
 	URL       string
 	Method    string
@@ -18,6 +20,7 @@ type Request struct {
 	Meta      map[string]interface{}
 }
 
+// Response is a domain model that represents http response.
 type Response struct {
 	Status  int
 	Headers map[string]string
@@ -25,6 +28,7 @@ type Response struct {
 	Request *Request
 }
 
+// NewGetRequest creates simple GET request.
 func NewGetRequest(urlStr string) *Request {
 	return &Request{
 		URL:       urlStr,
@@ -39,28 +43,30 @@ func NewGetRequest(urlStr string) *Request {
 	}
 }
 
+// Follow creates a url whose url schema and host is the same as those of response.
 func (r *Response) Follow(urlString string) (string, error) {
-	requestUrl, err := url.Parse(r.Request.URL)
+	requestURL, err := url.Parse(r.Request.URL)
 	if err != nil {
 		return "", xerrors.Errorf("request url %s is invalid. this will never happen.: %w", r.Request.URL, err)
-	} else if requestUrl.Host == "" || requestUrl.Scheme == "" {
+	} else if requestURL.Host == "" || requestURL.Scheme == "" {
 		return "", xerrors.New(fmt.Sprintf("request url %s is invalid. this will never happen.", r.Request.URL))
 	}
-	rawUrl, err := url.ParseRequestURI(urlString)
+	rawURL, err := url.ParseRequestURI(urlString)
 	if err != nil {
 		return "", xerrors.Errorf("link url %s is invalid.: %w", urlString, err)
 	}
-	if rawUrl.Host == "" {
-		rawUrl.Host = requestUrl.Host
-		rawUrl.Scheme = requestUrl.Scheme
+	if rawURL.Host == "" {
+		rawURL.Host = requestURL.Host
+		rawURL.Scheme = requestURL.Scheme
 	}
-	return rawUrl.String(), nil
+	return rawURL.String(), nil
 }
 
+// FollowRequest creates a simple GET request whose the schema and the host of the url is the same as those of response.
 func (r *Response) FollowRequest(urlString string) (*Request, error) {
-	requestUrl, err := r.Follow(urlString)
+	requestURL, err := r.Follow(urlString)
 	if err != nil {
 		return nil, xerrors.Errorf("fail to make request url.: %w", err)
 	}
-	return NewGetRequest(requestUrl), nil
+	return NewGetRequest(requestURL), nil
 }
