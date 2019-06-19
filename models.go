@@ -25,6 +25,20 @@ type Response struct {
 	Request *Request
 }
 
+func NewGetRequest(urlStr string) *Request {
+	return &Request{
+		URL:       urlStr,
+		Method:    "GET",
+		Headers:   map[string]string{},
+		Body:      []byte{},
+		Cookie:    map[string]string{},
+		Encoding:  "utf-8",
+		Priority:  0,
+		QueueName: "default",
+		Meta:      map[string]interface{}{},
+	}
+}
+
 func (r *Response) Follow(urlString string) (string, error) {
 	requestUrl, err := url.Parse(r.Request.URL)
 	if err != nil {
@@ -41,4 +55,12 @@ func (r *Response) Follow(urlString string) (string, error) {
 		rawUrl.Scheme = requestUrl.Scheme
 	}
 	return rawUrl.String(), nil
+}
+
+func (r *Response) FollowRequest(urlString string) (*Request, error) {
+	requestUrl, err := r.Follow(urlString)
+	if err != nil {
+		return nil, xerrors.Errorf("fail to make request url.: %w", err)
+	}
+	return NewGetRequest(requestUrl), nil
 }

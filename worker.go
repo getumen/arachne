@@ -9,7 +9,10 @@ type Worker struct {
 	workerQueue WorkerQueue
 }
 
-type WorkerBuilder struct {
+func newWorker(workerQueue WorkerQueue) *Worker {
+	return &Worker{
+		workerQueue: workerQueue,
+	}
 }
 
 func (*Worker) Start(ctx context.Context) {
@@ -25,11 +28,10 @@ func (w *Worker) subscribe(ctx context.Context) (<-chan Request, error) {
 	go func() {
 		defer close(output)
 
-	SubscribeLoop:
 		for {
 			select {
 			case <-ctx.Done():
-				break SubscribeLoop
+				return
 			case request := <-requestChan:
 				output <- request
 			}
@@ -40,4 +42,7 @@ func (w *Worker) subscribe(ctx context.Context) (<-chan Request, error) {
 
 func (w *Worker) doRequest() {
 
+}
+
+type WorkerBuilder struct {
 }
