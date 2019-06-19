@@ -5,4 +5,5 @@ import "context"
 
 type WorkerQueue interface {
 	SubscribeRequests(ctx context.Context) (<-chan Request, error)
+	RetryRequest(request *Request) error
 }

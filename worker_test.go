@@ -92,31 +92,3 @@ func TestWorker_subscribeError(t *testing.T) {
 		t.Fatalf("fail to propagate error.")
 	}
 }
-
-func TestWorker_subscribeCancel(t *testing.T) {
-
-	subscribeChan, tearDown := setupTestWorker_subscribeInfiniteChannel(t)
-	defer tearDown()
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	ctx := context.Background()
-	ctx, cancelFunc := context.WithCancel(ctx)
-
-	workerQueueMock := NewMockWorkerQueue(ctrl)
-	workerQueueMock.EXPECT().SubscribeRequests(ctx).Return(subscribeChan, nil)
-
-	worker := newWorker(workerQueueMock)
-	reqChan, err := worker.subscribe(ctx)
-
-	if err != nil {
-		t.Fatalf("subscribe fail %v", err)
-	}
-
-	cancelFunc()
-
-	for actual := range reqChan {
-		t.Fatalf("expected %s, but got %s", "https://golang.org/", actual.URL)
-	}
-}
