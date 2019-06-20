@@ -34,7 +34,8 @@ func (w *Worker) subscribe(ctx context.Context) (<-chan Request, error) {
 	output := make(chan Request)
 	requestChan, err := w.workerQueue.SubscribeRequests(ctx)
 	if err != nil {
-		return nil, xerrors.Errorf("fail to subscribe requests: %w", err)
+		return nil, xerrors.Errorf("fail to subscribe requests: %w",
+			err)
 	}
 	go func() {
 		defer close(output)
@@ -67,13 +68,15 @@ func (w *Worker) doRequest(requestChan <-chan Request) (<-chan Response, error) 
 				if w.requestRestrictionStrategy.CheckRestriction() {
 					resource, err := w.requestRestrictionStrategy.Resource(request)
 					if err != nil {
-						w.logger.Warnf("fail to get resource name for semaphore.: %v", err)
+						w.logger.Warnf("fail to get resource name for semaphore.: %v",
+							err)
 						return
 					}
 					ctx := context.TODO()
 					err = w.requestSemaphore.Acquire(ctx, resource)
 					if err != nil {
-						w.logger.Infof("retry %s because worker failed to acquire resource.", request.URL)
+						w.logger.Infof("retry %s because worker failed to acquire resource.",
+							request.URL)
 						w.requestRestrictionStrategy.ChangePriorityWhenRestricted(request)
 						err = w.workerQueue.RetryRequest(request)
 						w.logger.Errorf("fail to retry %s. this request is lost.")
@@ -94,17 +97,20 @@ func (w *Worker) doRequest(requestChan <-chan Request) (<-chan Response, error) 
 				// send request
 				httpRequest, err := request.HTTPRequest()
 				if err != nil {
-					w.logger.Warnf("fail to construct http.Request. %v: %v", request, err)
+					w.logger.Warnf("fail to construct http.Request. %v: %v",
+						request, err)
 					return
 				}
 				httpResponse, err := w.httpClient.Do(httpRequest)
 				if err != nil {
-					w.logger.Warnf("fail to get http.Response of http.Request(%v): %v", request, err)
+					w.logger.Warnf("fail to get http.Response of http.Request(%v): %v",
+						request, err)
 					return
 				}
 				response, err := NewResponseFromHTTPResponse(httpResponse)
 				if err != nil {
-					w.logger.Warnf("fail to construct Response of http.Response(%v): %v", httpResponse, err)
+					w.logger.Warnf("fail to construct Response of http.Response(%v): %v",
+						httpResponse, err)
 					return
 				}
 

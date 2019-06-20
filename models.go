@@ -68,16 +68,16 @@ func (r *Request) BodyReader() io.Reader {
 
 // Response is a domain model that represents http response.
 type Response struct {
-	Status  int
-	Headers http.Header
-	Body    []byte
-	Request *Request
+	StatusCode int
+	Headers    http.Header
+	Body       []byte
+	Request    *Request
 }
 
 // NewResponseFromHTTPResponse constructs Response from http.Response
 func NewResponseFromHTTPResponse(response *http.Response) (*Response, error) {
 	r := &Response{}
-	r.Status = response.StatusCode
+	r.StatusCode = response.StatusCode
 	r.Headers = response.Header
 	if response.Body != nil {
 		bodyBytes, err := ioutil.ReadAll(response.Body)

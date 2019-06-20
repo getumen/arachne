@@ -93,3 +93,7 @@ func TestWorker_subscribeError(t *testing.T) {
 		t.Fatalf("fail to propagate error.")
 	}
 }
+
+func TestWorker_doRequestSuccess(t *testing.T) {
+
+}
