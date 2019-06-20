@@ -1,7 +1,11 @@
 package lucy
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"net/url"
 
 	"golang.org/x/xerrors"
@@ -11,21 +15,84 @@ import (
 type Request struct {
 	URL       string
 	Method    string
-	Headers   map[string]string
+	Header    http.Header
 	Body      []byte
-	Cookie    map[string]string
-	Encoding  string
 	Priority  int64
 	QueueName string
 	Meta      map[string]interface{}
 }
 
+// NewRequestFromHTTPRequest constructs Request from http.Request
+func NewRequestFromHTTPRequest(request *http.Request) (*Request, error) {
+	r := &Request{}
+	r.URL = request.URL.String()
+	r.Method = request.Method
+	for key, values := range request.Header {
+		for _, value := range values {
+			r.Header.Add(key, value)
+		}
+	}
+	if request.Body != nil {
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			return nil, xerrors.Errorf("fail to read request body url: %s: %w ", request.URL.String(), err)
+		}
+		defer request.Body.Close()
+		r.Body = body
+	}
+	r.QueueName = "default"
+	r.Meta = map[string]interface{}{}
+	return r, nil
+}
+
+// HTTPRequest constructs http.Request from Request
+func (r *Request) HTTPRequest() (*http.Request, error) {
+	o, err := http.NewRequest(r.Method, r.URL, r.BodyReader())
+	if err != nil {
+		return nil, xerrors.Errorf(
+			"fail to create new request. URL(%s), Mehotd(%s) or Body(%s) are invalid.: %w ",
+			r.URL, r.Method, string(r.Body), err)
+	}
+	for key, values := range r.Header {
+		for _, value := range values {
+			o.Header.Add(key, value)
+		}
+	}
+	return o, nil
+}
+
+// BodyReader returns io.Reader of Body
+func (r *Request) BodyReader() io.Reader {
+	return bytes.NewBuffer(r.Body)
+}
+
 // Response is a domain model that represents http response.
 type Response struct {
 	Status  int
-	Headers map[string]string
+	Headers http.Header
 	Body    []byte
 	Request *Request
+}
+
+// NewResponseFromHTTPResponse constructs Response from http.Response
+func NewResponseFromHTTPResponse(response *http.Response) (*Response, error) {
+	r := &Response{}
+	r.Status = response.StatusCode
+	r.Headers = response.Header
+	if response.Body != nil {
+		bodyBytes, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return nil, xerrors.Errorf("fail to read body of  %s: %w ", response.Request.URL.String(), err)
+		}
+		defer response.Body.Close()
+		r.Body = bodyBytes
+	}
+	request, err := NewRequestFromHTTPRequest(response.Request)
+	if err != nil {
+		return nil, xerrors.Errorf("fail to read body of  %s: %w ", response.Request.URL.String(), err)
+	}
+	r.Request = request
+	return r, nil
 }
 
 // NewGetRequest creates simple GET request.
@@ -33,10 +100,8 @@ func NewGetRequest(urlStr string) *Request {
 	return &Request{
 		URL:       urlStr,
 		Method:    "GET",
-		Headers:   map[string]string{},
+		Header:    http.Header{},
 		Body:      []byte{},
-		Cookie:    map[string]string{},
-		Encoding:  "utf-8",
 		Priority:  0,
 		QueueName: "default",
 		Meta:      map[string]interface{}{},

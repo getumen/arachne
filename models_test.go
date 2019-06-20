@@ -1,19 +1,20 @@
 package lucy
 
-import "testing"
+import (
+	"net/http"
+	"testing"
+)
 
 func TestResponse_Follow(t *testing.T) {
 	validResponse := Response{
 		200,
-		map[string]string{},
+		http.Header{},
 		[]byte{},
 		&Request{
 			"https://golang.org/",
 			"GET",
-			map[string]string{},
+			http.Header{},
 			[]byte{},
-			map[string]string{},
-			"",
 			0,
 			"default",
 			map[string]interface{}{},
@@ -21,15 +22,13 @@ func TestResponse_Follow(t *testing.T) {
 
 	invalidResponse := Response{
 		200,
-		map[string]string{},
+		http.Header{},
 		[]byte{},
 		&Request{
 			"gopher",
 			"GET",
-			map[string]string{},
+			http.Header{},
 			[]byte{},
-			map[string]string{},
-			"",
 			0,
 			"default",
 			map[string]interface{}{},

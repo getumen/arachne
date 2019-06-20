@@ -14,6 +14,9 @@ type Worker struct {
 	requestSemaphore           RequestSemaphore
 	logger                     Logger
 	maxRequestNum              int64
+	requestMiddlewares         []func(request *Request)
+	responseMidlewares         []func(response *Response)
+	httpClient                 HTTPClient
 }
 
 func newWorker(workerQueue WorkerQueue) *Worker {
@@ -64,13 +67,13 @@ func (w *Worker) doRequest(requestChan <-chan Request) (<-chan Response, error) 
 				if w.requestRestrictionStrategy.CheckRestriction() {
 					resource, err := w.requestRestrictionStrategy.Resource(request)
 					if err != nil {
-						w.logger.Warnf("fail to get resource name for semaphore. %v", err)
+						w.logger.Warnf("fail to get resource name for semaphore.: %v", err)
 						return
 					}
 					ctx := context.TODO()
 					err = w.requestSemaphore.Acquire(ctx, resource)
 					if err != nil {
-						w.logger.Infof("retry %s.", request.URL)
+						w.logger.Infof("retry %s because worker failed to acquire resource.", request.URL)
 						w.requestRestrictionStrategy.ChangePriorityWhenRestricted(request)
 						err = w.workerQueue.RetryRequest(request)
 						w.logger.Errorf("fail to retry %s. this request is lost.")
@@ -79,9 +82,42 @@ func (w *Worker) doRequest(requestChan <-chan Request) (<-chan Response, error) 
 					defer w.requestSemaphore.Release(resource)
 				}
 
-				// TODO: do request
+				// apply requestMiddlewares
+				for _, middlewareFunc := range w.requestMiddlewares {
+					middlewareFunc(request)
+					if request == nil {
+						// discard request if nil
+						return
+					}
+				}
 
-				// TODO: parse response and send
+				// send request
+				httpRequest, err := request.HTTPRequest()
+				if err != nil {
+					w.logger.Warnf("fail to construct http.Request. %v: %v", request, err)
+					return
+				}
+				httpResponse, err := w.httpClient.Do(httpRequest)
+				if err != nil {
+					w.logger.Warnf("fail to get http.Response of http.Request(%v): %v", request, err)
+					return
+				}
+				response, err := NewResponseFromHTTPResponse(httpResponse)
+				if err != nil {
+					w.logger.Warnf("fail to construct Response of http.Response(%v): %v", httpResponse, err)
+					return
+				}
+
+				// apply responseMiddlewares
+				for _, middlewareFunc := range w.responseMidlewares {
+					middlewareFunc(response)
+					if request == nil {
+						// discard response if nil
+						return
+					}
+				}
+
+				responseChan <- *response
 			}(&request)
 		}
 	}()
