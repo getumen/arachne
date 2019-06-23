@@ -127,7 +127,9 @@ func TestWorker_doRequestSuccess(t *testing.T) {
 
 	requestStrategyMock.EXPECT().CheckRestriction().Return(true).AnyTimes()
 
-	requestStrategyMock.EXPECT().ChangePriorityWhenRestricted(gomock.AssignableToTypeOf(&Request{})).Do(
+	requestStrategyMock.EXPECT().ChangePriorityWhenRestricted(
+		gomock.AssignableToTypeOf(&Request{}),
+	).Do(
 		func(r *Request) {
 			// do nothing
 		},
@@ -139,7 +141,9 @@ func TestWorker_doRequestSuccess(t *testing.T) {
 		func(r *Request) (string, error) { return r.URLHost(), nil },
 	).AnyTimes()
 
-	requestSemaphoreMock.EXPECT().Acquire(ctx, gomock.AssignableToTypeOf("")).Do(
+	requestSemaphoreMock.EXPECT().Acquire(
+		ctx, gomock.AssignableToTypeOf(""),
+	).Do(
 		func(ctx context.Context, resource string) error {
 			if resource != "golang.org" {
 				t.Fatalf("expected golang.org, but got %s.\n", resource)
@@ -148,20 +152,32 @@ func TestWorker_doRequestSuccess(t *testing.T) {
 		},
 	).AnyTimes()
 
-	requestSemaphoreMock.EXPECT().Release(gomock.AssignableToTypeOf("")).Do(
+	requestSemaphoreMock.EXPECT().Release(
+		gomock.AssignableToTypeOf(""),
+	).Do(
 		func(resource string) {
 			// do nothing
 		},
 	).AnyTimes()
 
-	httpClientMock.EXPECT().Do(gomock.AssignableToTypeOf(&http.Request{})).DoAndReturn(
+	httpClientMock.EXPECT().Do(
+		gomock.AssignableToTypeOf(&http.Request{}),
+	).DoAndReturn(
 		func(r *http.Request) (*http.Response, error) {
 			return &http.Response{Request: r}, nil
 		},
 	).AnyTimes()
 
-	worker := newWorker(nil, requestStrategyMock, requestSemaphoreMock, httpClientMock, StdoutLogger{},
-		10, []func(request *Request){}, []func(response *Response){})
+	worker := newWorker(
+		nil,
+		requestStrategyMock,
+		requestSemaphoreMock,
+		httpClientMock,
+		StdoutLogger{},
+		10,
+		[]func(request *Request){},
+		[]func(response *Response){},
+	)
 
 	returnValueChan, err := worker.doRequest(inputPipeline())
 
