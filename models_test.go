@@ -6,33 +6,25 @@ import (
 )
 
 func TestResponse_Follow(t *testing.T) {
+	request, err := NewGetRequest("https://golang.org/")
+	if err != nil {
+		t.Fatalf("fail to create request")
+	}
 	validResponse := Response{
 		200,
 		http.Header{},
 		[]byte{},
-		&Request{
-			"https://golang.org/",
-			"GET",
-			http.Header{},
-			[]byte{},
-			0,
-			"default",
-			map[string]interface{}{},
-		}}
+		request}
 
+	request, err = NewGetRequest("gopher")
+	if err != nil {
+		t.Fatalf("fail to create request")
+	}
 	invalidResponse := Response{
 		200,
 		http.Header{},
 		[]byte{},
-		&Request{
-			"gopher",
-			"GET",
-			http.Header{},
-			[]byte{},
-			0,
-			"default",
-			map[string]interface{}{},
-		}}
+		request}
 
 	tests := []struct {
 		response        Response

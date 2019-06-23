@@ -34,10 +34,10 @@ func (m *MockWorkerQueue) EXPECT() *MockWorkerQueueMockRecorder {
 }
 
 // SubscribeRequests mocks base method
-func (m *MockWorkerQueue) SubscribeRequests(ctx context.Context) (<-chan Request, error) {
+func (m *MockWorkerQueue) SubscribeRequests(ctx context.Context) (<-chan *Request, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubscribeRequests", ctx)
-	ret0, _ := ret[0].(<-chan Request)
+	ret0, _ := ret[0].(<-chan *Request)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -13,19 +13,39 @@ import (
 
 // Request is a domain model that represents http request.
 type Request struct {
-	URL       string
-	Method    string
-	Header    http.Header
-	Body      []byte
-	Priority  int64
-	QueueName string
-	Meta      map[string]interface{}
+	URL        string
+	Method     string
+	Header     http.Header
+	Body       []byte
+	Priority   int64
+	QueueName  string
+	Meta       map[string]interface{}
+	requestURL *url.URL
+}
+
+// NewGetRequest creates simple GET request.
+func NewGetRequest(urlStr string) (*Request, error) {
+	requestURL, err := url.Parse(urlStr)
+	if err != nil {
+		return nil, xerrors.Errorf("fail to make request url.: %w", err)
+	}
+	request := new(Request)
+	request.URL = urlStr
+	request.Method = "GET"
+	request.Header = http.Header{}
+	request.Body = []byte{}
+	request.Priority = 0
+	request.QueueName = "default"
+	request.Meta = map[string]interface{}{}
+	request.requestURL = requestURL
+	return request, nil
 }
 
 // NewRequestFromHTTPRequest constructs Request from http.Request
 func NewRequestFromHTTPRequest(request *http.Request) (*Request, error) {
-	r := &Request{}
+	r := new(Request)
 	r.URL = request.URL.String()
+	r.requestURL = request.URL
 	r.Method = request.Method
 	for key, values := range request.Header {
 		for _, value := range values {
@@ -61,6 +81,11 @@ func (r *Request) HTTPRequest() (*http.Request, error) {
 	return o, nil
 }
 
+// URLHost returns the host of the request url.
+func (r *Request) URLHost() string {
+	return r.requestURL.Host
+}
+
 // BodyReader returns io.Reader of Body
 func (r *Request) BodyReader() io.Reader {
 	return bytes.NewBuffer(r.Body)
@@ -76,7 +101,7 @@ type Response struct {
 
 // NewResponseFromHTTPResponse constructs Response from http.Response
 func NewResponseFromHTTPResponse(response *http.Response) (*Response, error) {
-	r := &Response{}
+	r := new(Response)
 	r.StatusCode = response.StatusCode
 	r.Headers = response.Header
 	if response.Body != nil {
@@ -93,19 +118,6 @@ func NewResponseFromHTTPResponse(response *http.Response) (*Response, error) {
 	}
 	r.Request = request
 	return r, nil
-}
-
-// NewGetRequest creates simple GET request.
-func NewGetRequest(urlStr string) *Request {
-	return &Request{
-		URL:       urlStr,
-		Method:    "GET",
-		Header:    http.Header{},
-		Body:      []byte{},
-		Priority:  0,
-		QueueName: "default",
-		Meta:      map[string]interface{}{},
-	}
 }
 
 // Follow creates a url whose url schema and host is the same as those of response.
@@ -133,5 +145,9 @@ func (r *Response) FollowRequest(urlString string) (*Request, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("fail to make request url.: %w", err)
 	}
-	return NewGetRequest(requestURL), nil
+	req, err := NewGetRequest(requestURL)
+	if err != nil {
+		return nil, xerrors.Errorf("fail to make request.: %w", err)
+	}
+	return req, nil
 }
