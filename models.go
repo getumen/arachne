@@ -1,44 +1,153 @@
 package lucy
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"net/url"
-	"time"
+
+	"golang.org/x/xerrors"
 )
-import "golang.org/x/xerrors"
 
+// Request is a domain model that represents http request.
 type Request struct {
-	URL         string
-	Method      string
-	Headers     map[string]string
-	Body        []byte
-	Cookie      map[string]string
-	Encoding    string
-	nextRequest time.Time
-	lastRequest time.Time
-	stats       map[string]float64
-	namespace   string
-	meta        map[string]interface{}
+	URL        string
+	Method     string
+	Header     http.Header
+	Body       []byte
+	Priority   int64
+	QueueName  string
+	Meta       map[string]interface{}
+	requestURL *url.URL
 }
 
-type Response struct {
-	Status  int
-	Headers map[string]string
-	Body    []byte
-	Request *Request
-}
-
-func (r *Response) Follow(urlString string) (string, error) {
-	requestUrl, err := url.Parse(r.Request.URL)
+// NewGetRequest creates simple GET request.
+func NewGetRequest(urlStr string) (*Request, error) {
+	requestURL, err := url.Parse(urlStr)
 	if err != nil {
-		return "", xerrors.Errorf("request url is invalid. this will never happen.: %w", err)
+		return nil, xerrors.Errorf("fail to make request url.: %w", err)
 	}
-	rawUrl, err := url.ParseRequestURI(urlString)
+	request := new(Request)
+	request.URL = urlStr
+	request.Method = "GET"
+	request.Header = http.Header{}
+	request.Body = []byte{}
+	request.Priority = 0
+	request.QueueName = "default"
+	request.Meta = map[string]interface{}{}
+	request.requestURL = requestURL
+	return request, nil
+}
+
+// NewRequestFromHTTPRequest constructs Request from http.Request
+func NewRequestFromHTTPRequest(request *http.Request) (*Request, error) {
+	r := new(Request)
+	r.URL = request.URL.String()
+	r.requestURL = request.URL
+	r.Method = request.Method
+	for key, values := range request.Header {
+		for _, value := range values {
+			r.Header.Add(key, value)
+		}
+	}
+	if request.Body != nil {
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			return nil, xerrors.Errorf("fail to read request body url: %s: %w ", request.URL.String(), err)
+		}
+		defer request.Body.Close()
+		r.Body = body
+	}
+	r.QueueName = "default"
+	r.Meta = map[string]interface{}{}
+	return r, nil
+}
+
+// HTTPRequest constructs http.Request from Request
+func (r *Request) HTTPRequest() (*http.Request, error) {
+	o, err := http.NewRequest(r.Method, r.URL, r.BodyReader())
+	if err != nil {
+		return nil, xerrors.Errorf(
+			"fail to create new request. URL(%s), Mehotd(%s) or Body(%s) are invalid.: %w ",
+			r.URL, r.Method, string(r.Body), err)
+	}
+	for key, values := range r.Header {
+		for _, value := range values {
+			o.Header.Add(key, value)
+		}
+	}
+	return o, nil
+}
+
+// URLHost returns the host of the request url.
+func (r *Request) URLHost() string {
+	return r.requestURL.Host
+}
+
+// BodyReader returns io.Reader of Body
+func (r *Request) BodyReader() io.Reader {
+	return bytes.NewBuffer(r.Body)
+}
+
+// Response is a domain model that represents http response.
+type Response struct {
+	StatusCode int
+	Headers    http.Header
+	Body       []byte
+	Request    *Request
+}
+
+// NewResponseFromHTTPResponse constructs Response from http.Response
+func NewResponseFromHTTPResponse(response *http.Response) (*Response, error) {
+	r := new(Response)
+	r.StatusCode = response.StatusCode
+	r.Headers = response.Header
+	if response.Body != nil {
+		bodyBytes, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return nil, xerrors.Errorf("fail to read body of  %s: %w ", response.Request.URL.String(), err)
+		}
+		defer response.Body.Close()
+		r.Body = bodyBytes
+	}
+	request, err := NewRequestFromHTTPRequest(response.Request)
+	if err != nil {
+		return nil, xerrors.Errorf("fail to read body of  %s: %w ", response.Request.URL.String(), err)
+	}
+	r.Request = request
+	return r, nil
+}
+
+// Follow creates a url whose url schema and host is the same as those of response.
+func (r *Response) Follow(urlString string) (string, error) {
+	requestURL, err := url.Parse(r.Request.URL)
+	if err != nil {
+		return "", xerrors.Errorf("request url %s is invalid. this will never happen.: %w", r.Request.URL, err)
+	} else if requestURL.Host == "" || requestURL.Scheme == "" {
+		return "", xerrors.New(fmt.Sprintf("request url %s is invalid. this will never happen.", r.Request.URL))
+	}
+	rawURL, err := url.ParseRequestURI(urlString)
 	if err != nil {
 		return "", xerrors.Errorf("link url %s is invalid.: %w", urlString, err)
 	}
-	if rawUrl.Host == "" {
-		rawUrl.Host = requestUrl.Host
-		rawUrl.Scheme = requestUrl.Scheme
+	if rawURL.Host == "" {
+		rawURL.Host = requestURL.Host
+		rawURL.Scheme = requestURL.Scheme
 	}
-	return rawUrl.String(), nil
+	return rawURL.String(), nil
+}
+
+// FollowRequest creates a simple GET request whose the schema and the host of the url is the same as those of response.
+func (r *Response) FollowRequest(urlString string) (*Request, error) {
+	requestURL, err := r.Follow(urlString)
+	if err != nil {
+		return nil, xerrors.Errorf("fail to make request url.: %w", err)
+	}
+	req, err := NewGetRequest(requestURL)
+	if err != nil {
+		return nil, xerrors.Errorf("fail to make request.: %w", err)
+	}
+	return req, nil
 }
