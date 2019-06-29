@@ -2,6 +2,7 @@ package lucy
 
 import (
 	"context"
+	"sync"
 
 	"golang.org/x/sync/semaphore"
 	"golang.org/x/xerrors"
@@ -69,7 +70,12 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 	// TODO: add goroutine supervisor
 	go func() {
 		defer close(responseChan)
+
+		// max request per worker
 		workerRequestSemaphore := semaphore.NewWeighted(w.maxRequestNum)
+
+		requestWaitGroup := sync.WaitGroup{}
+
 		for request := range requestChan {
 
 			ctx := context.Background()
@@ -81,6 +87,7 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 
 			handleRequest := func(request *Request) {
 				defer workerRequestSemaphore.Release(1)
+				defer requestWaitGroup.Done()
 
 				// request restriction
 				if w.requestRestrictionStrategy.CheckRestriction() {
@@ -96,7 +103,9 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 							request.URL)
 						w.requestRestrictionStrategy.ChangePriorityWhenRestricted(request)
 						err = w.workerQueue.RetryRequest(request)
-						w.logger.Errorf("fail to retry %s. this request is lost.")
+						if err != nil {
+							w.logger.Errorf("fail to retry %s. this request is lost.")
+						}
 						return
 					}
 					defer w.requestSemaphore.Release(resource)
@@ -143,9 +152,13 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 				responseChan <- response
 			}
 
+			requestWaitGroup.Add(1)
 			go handleRequest(request)
 		}
+
+		requestWaitGroup.Wait()
 	}()
+
 	return responseChan, nil
 }
 

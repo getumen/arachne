@@ -1,5 +1,7 @@
 package lucy
 
+//go:generate mockgen -source=$GOFILE -destination=mock_$GOFILE -package=$GOPACKAGE -self_package=github.com/getumen/lucy
+
 import "log"
 
 // Logger is interface for logging in lucy crawler.
@@ -11,7 +13,7 @@ type Logger interface {
 	Criticalf(format string, v ...interface{})
 }
 
-// StdoutLogger prints all logs to stdout
+// StdoutLogger is a sample logger that prints all logs to stdout
 type StdoutLogger struct{}
 
 // Debugf prints args to stdout
