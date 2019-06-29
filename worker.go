@@ -185,8 +185,13 @@ func (w *Worker) applySpider(responseChan <-chan *Response) (<-chan *Request, er
 	return requestChan, nil
 }
 
-func (w *Worker) publishRequest(requestChan <-chan Request) error {
-	// TODO: publish request
+func (w *Worker) publishRequest(requestChan <-chan *Request) error {
+	for request := range requestChan {
+		err := w.workerQueue.PublishRequest(request)
+		if err != nil {
+			w.logger.Errorf("fail to publish request: %s", request.URL)
+		}
+	}
 	return nil
 }
 

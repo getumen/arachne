@@ -460,3 +460,97 @@ func TestWorker_applySpiderReturnError(t *testing.T) {
 		t.Fatalf("expect requestCounter == 0, but got %d", requestCounter)
 	}
 }
+
+func TestWorker_publishRequestPublish(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	loggerMock := NewMockLogger(ctrl)
+	workerQueueMock := NewMockWorkerQueue(ctrl)
+
+	worker := newWorker(
+		workerQueueMock,
+		nil,
+		nil,
+		nil,
+		loggerMock,
+		10,
+		[]func(request *Request){},
+		[]func(response *Response){},
+		nil,
+	)
+
+	const requestNum = 100
+
+	inputPipeline := func() chan *Request {
+		output := make(chan *Request)
+		go func() {
+			defer close(output)
+			for i := 0; i < requestNum; i++ {
+				output <- &Request{URL: "https://golang.org/"}
+			}
+		}()
+		return output
+	}
+
+	workerQueueMock.EXPECT().PublishRequest(
+		gomock.AssignableToTypeOf(&Request{}),
+	).DoAndReturn(
+		func(r *Request) error {
+			if r.URL != "https://golang.org/" {
+				t.Fatalf("expect https://golang.org/, but got %s", r.URL)
+			}
+			return nil
+		},
+	).Times(requestNum)
+
+	_ = worker.publishRequest(inputPipeline())
+}
+
+func TestWorker_publishRequestFailToPublish(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	loggerMock := NewMockLogger(ctrl)
+	workerQueueMock := NewMockWorkerQueue(ctrl)
+
+	worker := newWorker(
+		workerQueueMock,
+		nil,
+		nil,
+		nil,
+		loggerMock,
+		10,
+		[]func(request *Request){},
+		[]func(response *Response){},
+		nil,
+	)
+
+	const requestNum = 100
+
+	inputPipeline := func() chan *Request {
+		output := make(chan *Request)
+		go func() {
+			defer close(output)
+			for i := 0; i < requestNum; i++ {
+				output <- &Request{URL: "https://golang.org/"}
+			}
+		}()
+		return output
+	}
+
+	workerQueueMock.EXPECT().PublishRequest(
+		gomock.AssignableToTypeOf(&Request{}),
+	).DoAndReturn(
+		func(r *Request) error {
+			if r.URL != "https://golang.org/" {
+				t.Fatalf("expect https://golang.org/, but got %s", r.URL)
+			}
+			return errors.New("")
+		},
+	).Times(requestNum)
+
+	loggerMock.EXPECT().Errorf("fail to publish request: %s", "https://golang.org/").Times(requestNum)
+
+	_ = worker.publishRequest(inputPipeline())
+}

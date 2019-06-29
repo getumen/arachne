@@ -61,3 +61,17 @@ func (mr *MockWorkerQueueMockRecorder) RetryRequest(request interface{}) *gomock
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryRequest", reflect.TypeOf((*MockWorkerQueue)(nil).RetryRequest), request)
 }
+
+// PublishRequest mocks base method
+func (m *MockWorkerQueue) PublishRequest(request *Request) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublishRequest", request)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PublishRequest indicates an expected call of PublishRequest
+func (mr *MockWorkerQueueMockRecorder) PublishRequest(request interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishRequest", reflect.TypeOf((*MockWorkerQueue)(nil).PublishRequest), request)
+}
