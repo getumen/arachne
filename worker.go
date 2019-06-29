@@ -18,6 +18,7 @@ type Worker struct {
 	maxRequestNum              int64
 	requestMiddlewares         []func(request *Request)
 	responseMidlewares         []func(response *Response)
+	spider                     func(response *Response) ([]*Request, error)
 }
 
 func newWorker(
@@ -29,6 +30,7 @@ func newWorker(
 	maxRequestNum int64,
 	requestMiddlewares []func(request *Request),
 	responseMidlewares []func(response *Response),
+	spider func(response *Response) ([]*Request, error),
 ) *Worker {
 	return &Worker{
 		workerQueue:                workerQueue,
@@ -39,6 +41,7 @@ func newWorker(
 		maxRequestNum:              maxRequestNum,
 		requestMiddlewares:         requestMiddlewares,
 		responseMidlewares:         responseMidlewares,
+		spider:                     spider,
 	}
 }
 
@@ -166,7 +169,17 @@ func (w *Worker) applySpider(responseChan <-chan *Response) (<-chan *Request, er
 	requestChan := make(chan *Request)
 
 	go func() {
-		// TODO: apply spider
+		defer close(requestChan)
+		for response := range responseChan {
+			nextRequests, err := w.spider(response)
+			if err != nil {
+				w.logger.Infof("spider error: %v", err)
+				continue
+			}
+			for _, request := range nextRequests {
+				requestChan <- request
+			}
+		}
 	}()
 
 	return requestChan, nil

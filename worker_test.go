@@ -61,7 +61,7 @@ func TestWorker_subscribeSuccess(t *testing.T) {
 	workerQueueMock.EXPECT().SubscribeRequests(ctx).Return(subscribeChan, nil)
 
 	worker := newWorker(workerQueueMock, nil, nil, nil, StdoutLogger{},
-		10, []func(request *Request){}, []func(response *Response){})
+		10, []func(request *Request){}, []func(response *Response){}, nil)
 	reqChan, err := worker.subscribe(ctx)
 
 	if err != nil {
@@ -92,7 +92,7 @@ func TestWorker_subscribeError(t *testing.T) {
 	workerQueueMock.EXPECT().SubscribeRequests(ctx).Return(nil, xerrors.New("some error."))
 
 	worker := newWorker(workerQueueMock, nil, nil, nil, StdoutLogger{},
-		10, []func(request *Request){}, []func(response *Response){})
+		10, []func(request *Request){}, []func(response *Response){}, nil)
 	reqChan, err := worker.subscribe(ctx)
 
 	if reqChan != nil || err == nil {
@@ -175,6 +175,7 @@ func TestWorker_doRequestRestrictionByDomain(t *testing.T) {
 		10,
 		[]func(request *Request){},
 		[]func(response *Response){},
+		nil,
 	)
 
 	returnValueChan, err := worker.doRequest(inputPipeline())
@@ -237,6 +238,7 @@ func TestWorker_doRequestNotCheckRestriction(t *testing.T) {
 		10,
 		[]func(request *Request){},
 		[]func(response *Response){},
+		nil,
 	)
 
 	returnValueChan, err := worker.doRequest(inputPipeline())
@@ -332,6 +334,7 @@ func TestWorker_doRequestRetry(t *testing.T) {
 		10,
 		[]func(request *Request){},
 		[]func(response *Response){},
+		nil,
 	)
 
 	returnValueChan, err := worker.doRequest(inputPipeline())
@@ -342,5 +345,118 @@ func TestWorker_doRequestRetry(t *testing.T) {
 
 	for returnValue := range returnValueChan {
 		t.Fatalf("expect no response, got %s", returnValue.Request.URL)
+	}
+}
+
+func TestWorker_applySpiderReturnNewRequests(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	loggerMock := NewMockLogger(ctrl)
+
+	const requestURL = "https://golang.org/"
+
+	request, _ := NewGetRequest(requestURL)
+
+	worker := newWorker(
+		nil,
+		nil,
+		nil,
+		nil,
+		loggerMock,
+		10,
+		[]func(request *Request){},
+		[]func(response *Response){},
+		func(response *Response) ([]*Request, error) {
+			return []*Request{
+				request,
+				request,
+				request,
+			}, nil
+		},
+	)
+
+	const responseNum = 100
+
+	inputPipeline := func() chan *Response {
+		output := make(chan *Response)
+		go func() {
+			defer close(output)
+			for i := 0; i < responseNum; i++ {
+				output <- &Response{}
+			}
+		}()
+		return output
+	}
+
+	returnValueChan, err := worker.applySpider(inputPipeline())
+	if err != nil {
+		t.Fatalf("expect err == nil, but got %v", err)
+	}
+
+	requestCounter := 0
+	for returnValue := range returnValueChan {
+		if returnValue.URL != requestURL {
+			t.Fatalf("expect no response, got %s", returnValue.URL)
+		}
+		requestCounter++
+	}
+	if requestCounter != 300 {
+		t.Fatalf("expect requestCounter == 300, but got %d", requestCounter)
+	}
+}
+
+func TestWorker_applySpiderReturnError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	loggerMock := NewMockLogger(ctrl)
+
+	worker := newWorker(
+		nil,
+		nil,
+		nil,
+		nil,
+		loggerMock,
+		10,
+		[]func(request *Request){},
+		[]func(response *Response){},
+		func(response *Response) ([]*Request, error) {
+			return nil, errors.New("error")
+		},
+	)
+
+	const responseNum = 100
+
+	loggerMock.EXPECT().Infof(
+		"spider error: %v", gomock.AssignableToTypeOf(errors.New("")),
+	).Times(responseNum)
+
+	inputPipeline := func() chan *Response {
+		output := make(chan *Response)
+		go func() {
+			defer close(output)
+			for i := 0; i < responseNum; i++ {
+				output <- &Response{}
+			}
+		}()
+		return output
+	}
+
+	returnValueChan, err := worker.applySpider(inputPipeline())
+
+	if err != nil {
+		t.Fatalf("expect err == nil, but got %v", err)
+	}
+
+	requestCounter := 0
+	for returnValue := range returnValueChan {
+		if returnValue != nil {
+			t.Fatalf("expect no result, but got %v", returnValue)
+		}
+		requestCounter++
+	}
+	if requestCounter != 0 {
+		t.Fatalf("expect requestCounter == 0, but got %d", requestCounter)
 	}
 }
