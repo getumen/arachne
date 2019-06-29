@@ -194,7 +194,3 @@ func (w *Worker) publishRequest(requestChan <-chan *Request) error {
 	}
 	return nil
 }
-
-// WorkerBuilder is the builder of Worker.
-type WorkerBuilder struct {
-}

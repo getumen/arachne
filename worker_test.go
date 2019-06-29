@@ -1,12 +1,12 @@
 package lucy
 
 import (
-	context "context"
+	"context"
 	"errors"
 	"net/http"
 	"testing"
 
-	gomock "github.com/golang/mock/gomock"
+	"github.com/golang/mock/gomock"
 	"golang.org/x/xerrors"
 )
 
@@ -58,10 +58,20 @@ func TestWorker_subscribeSuccess(t *testing.T) {
 	ctx := context.Background()
 
 	workerQueueMock := NewMockWorkerQueue(ctrl)
+	loggerMock := NewMockLogger(ctrl)
+
 	workerQueueMock.EXPECT().SubscribeRequests(ctx).Return(subscribeChan, nil)
 
-	worker := newWorker(workerQueueMock, nil, nil, nil, StdoutLogger{},
-		10, []func(request *Request){}, []func(response *Response){}, nil)
+	worker := newWorker(
+		workerQueueMock,
+		nil,
+		nil,
+		nil,
+		loggerMock,
+		10,
+		[]func(request *Request){}, []func(response *Response){},
+		nil,
+	)
 	reqChan, err := worker.subscribe(ctx)
 
 	if err != nil {
@@ -89,10 +99,20 @@ func TestWorker_subscribeError(t *testing.T) {
 	ctx := context.Background()
 
 	workerQueueMock := NewMockWorkerQueue(ctrl)
+	loggerMock := NewMockLogger(ctrl)
+
 	workerQueueMock.EXPECT().SubscribeRequests(ctx).Return(nil, xerrors.New("some error."))
 
-	worker := newWorker(workerQueueMock, nil, nil, nil, StdoutLogger{},
-		10, []func(request *Request){}, []func(response *Response){}, nil)
+	worker := newWorker(
+		workerQueueMock,
+		nil,
+		nil,
+		nil,
+		loggerMock,
+		10,
+		[]func(request *Request){}, []func(response *Response){},
+		nil,
+	)
 	reqChan, err := worker.subscribe(ctx)
 
 	if reqChan != nil || err == nil {
@@ -112,6 +132,7 @@ func TestWorker_doRequestRestrictionByDomain(t *testing.T) {
 	requestStrategyMock := NewMockRequestRestrictionStrategy(ctrl)
 	requestSemaphoreMock := NewMockRequestSemaphore(ctrl)
 	httpClientMock := NewMockHTTPClient(ctrl)
+	loggerMock := NewMockLogger(ctrl)
 
 	request, err := NewGetRequest("https://golang.org/")
 	if err != nil {
@@ -171,7 +192,7 @@ func TestWorker_doRequestRestrictionByDomain(t *testing.T) {
 		requestStrategyMock,
 		requestSemaphoreMock,
 		httpClientMock,
-		StdoutLogger{},
+		loggerMock,
 		10,
 		[]func(request *Request){},
 		[]func(response *Response){},
@@ -200,6 +221,7 @@ func TestWorker_doRequestNotCheckRestriction(t *testing.T) {
 	requestStrategyMock := NewMockRequestRestrictionStrategy(ctrl)
 	requestSemaphoreMock := NewMockRequestSemaphore(ctrl)
 	httpClientMock := NewMockHTTPClient(ctrl)
+	loggerMock := NewMockLogger(ctrl)
 
 	request, err := NewGetRequest("https://golang.org/")
 	if err != nil {
@@ -234,7 +256,7 @@ func TestWorker_doRequestNotCheckRestriction(t *testing.T) {
 		requestStrategyMock,
 		requestSemaphoreMock,
 		httpClientMock,
-		StdoutLogger{},
+		loggerMock,
 		10,
 		[]func(request *Request){},
 		[]func(response *Response){},
