@@ -4,44 +4,34 @@ import (
 	"context"
 	"sync"
 
-	"golang.org/x/sync/semaphore"
 	"golang.org/x/xerrors"
 )
 
 // Worker handles scheduled requests.
 type Worker struct {
-	workerQueue                WorkerQueue
-	requestRestrictionStrategy RequestRestrictionStrategy
-	requestSemaphore           RequestSemaphore
-	httpClient                 HTTPClient
-	logger                     Logger
-	maxRequestNum              int64
-	requestMiddlewares         []func(request *Request)
-	responseMidlewares         []func(response *Response)
-	spider                     func(response *Response) ([]*Request, error)
+	workerQueue        WorkerQueue
+	httpClient         HTTPClient
+	logger             Logger
+	requestMiddlewares []func(request *Request)
+	responseMidlewares []func(response *Response)
+	spider             func(response *Response) ([]*Request, error)
 }
 
 func newWorker(
 	workerQueue WorkerQueue,
-	requestRestrictionStrategy RequestRestrictionStrategy,
-	requestSemaphore RequestSemaphore,
 	httpClient HTTPClient,
 	logger Logger,
-	maxRequestNum int64,
 	requestMiddlewares []func(request *Request),
 	responseMidlewares []func(response *Response),
 	spider func(response *Response) ([]*Request, error),
 ) *Worker {
 	return &Worker{
-		workerQueue:                workerQueue,
-		requestRestrictionStrategy: requestRestrictionStrategy,
-		requestSemaphore:           requestSemaphore,
-		httpClient:                 httpClient,
-		logger:                     logger,
-		maxRequestNum:              maxRequestNum,
-		requestMiddlewares:         requestMiddlewares,
-		responseMidlewares:         responseMidlewares,
-		spider:                     spider,
+		workerQueue:        workerQueue,
+		httpClient:         httpClient,
+		logger:             logger,
+		requestMiddlewares: requestMiddlewares,
+		responseMidlewares: responseMidlewares,
+		spider:             spider,
 	}
 }
 
@@ -74,45 +64,12 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 	go func() {
 		defer close(responseChan)
 
-		// max request per worker
-		workerRequestSemaphore := semaphore.NewWeighted(w.maxRequestNum)
-
 		requestWaitGroup := sync.WaitGroup{}
 
 		for request := range requestChan {
 
-			ctx := context.Background()
-			err := workerRequestSemaphore.Acquire(ctx, 1)
-			if err != nil {
-				w.logger.Errorf("fail to acquire workerRequestSemaphore")
-				continue
-			}
-
 			handleRequest := func(request *Request) {
-				defer workerRequestSemaphore.Release(1)
 				defer requestWaitGroup.Done()
-
-				// request restriction
-				if w.requestRestrictionStrategy.CheckRestriction() {
-					resource, err := w.requestRestrictionStrategy.Resource(request)
-					if err != nil {
-						w.logger.Warnf("fail to get resource name for semaphore.: %v",
-							err)
-						return
-					}
-					err = w.requestSemaphore.Acquire(ctx, resource)
-					if err != nil {
-						w.logger.Infof("retry %s because worker failed to acquire resource.",
-							request.URL)
-						w.requestRestrictionStrategy.ChangePriorityWhenRestricted(request)
-						err = w.workerQueue.RetryRequest(request)
-						if err != nil {
-							w.logger.Errorf("fail to retry %s. this request is lost.")
-						}
-						return
-					}
-					defer w.requestSemaphore.Release(resource)
-				}
 
 				// apply requestMiddlewares
 				for _, middlewareFunc := range w.requestMiddlewares {
@@ -193,4 +150,18 @@ func (w *Worker) publishRequest(requestChan <-chan *Request) error {
 		}
 	}
 	return nil
+}
+
+// RetryMiddleware is request middleware that remove request in worker pipeline
+// and send request to worker queue if Request.Meta['retry'] flas is true.
+func (w *Worker) RetryMiddleware(request *Request) {
+	if retry, ok := request.Meta["retry"]; ok {
+		if retryFlag, ok := retry.(bool); retryFlag && ok {
+			err := w.workerQueue.RetryRequest(request)
+			if err != nil {
+				w.logger.Errorf("fail to retry %s. this request is lost.")
+			}
+			request = nil
+		}
+	}
 }
