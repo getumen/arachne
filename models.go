@@ -124,9 +124,9 @@ func NewResponseFromHTTPResponse(response *http.Response) (*Response, error) {
 func (r *Response) Follow(urlString string) (string, error) {
 	requestURL, err := url.Parse(r.Request.URL)
 	if err != nil {
-		return "", xerrors.Errorf("request url %s is invalid. this will never happen.: %w", r.Request.URL, err)
+		return "", xerrors.Errorf("request url %s is invalid. this will never happened: %w", r.Request.URL, err)
 	} else if requestURL.Host == "" || requestURL.Scheme == "" {
-		return "", xerrors.New(fmt.Sprintf("request url %s is invalid. this will never happen.", r.Request.URL))
+		return "", xerrors.New(fmt.Sprintf("request url %s is invalid. this will be never happened", r.Request.URL))
 	}
 	rawURL, err := url.ParseRequestURI(urlString)
 	if err != nil {
