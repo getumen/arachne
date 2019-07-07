@@ -119,9 +119,6 @@ func TestWorker_doRequestRestrictionByDomain(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	ctx := context.Background()
-
-	requestStrategyMock := NewMockRequestRestrictionStrategy(ctrl)
 	httpClientMock := NewMockHTTPClient(ctrl)
 	loggerMock := NewMockLogger(ctrl)
 
