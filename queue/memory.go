@@ -54,6 +54,15 @@ func (q *memoryWorkerQueue) SubscribeRequests(ctx context.Context) (<-chan *lucy
 		}
 	}()
 
+	// notify context canceled to prevent cond from waiting permanently
+	go func() {
+		select {
+		//wait canncel
+		case <-ctx.Done():
+			cond.Signal()
+		}
+	}()
+
 	return requestChan, nil
 }
 func (q *memoryWorkerQueue) RetryRequest(request *lucy.Request) error {
