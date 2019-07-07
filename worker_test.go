@@ -65,10 +65,7 @@ func TestWorker_subscribeSuccess(t *testing.T) {
 	worker := newWorker(
 		workerQueueMock,
 		nil,
-		nil,
-		nil,
 		loggerMock,
-		10,
 		[]func(request *Request){}, []func(response *Response){},
 		nil,
 	)
@@ -106,10 +103,7 @@ func TestWorker_subscribeError(t *testing.T) {
 	worker := newWorker(
 		workerQueueMock,
 		nil,
-		nil,
-		nil,
 		loggerMock,
-		10,
 		[]func(request *Request){}, []func(response *Response){},
 		nil,
 	)
@@ -121,16 +115,10 @@ func TestWorker_subscribeError(t *testing.T) {
 }
 
 // TestWorker_doRequestSuccess
-// CheckRestriction: true
-// semaphore resource: url domain
 func TestWorker_doRequestRestrictionByDomain(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	ctx := context.Background()
-
-	requestStrategyMock := NewMockRequestRestrictionStrategy(ctrl)
-	requestSemaphoreMock := NewMockRequestSemaphore(ctrl)
 	httpClientMock := NewMockHTTPClient(ctrl)
 	loggerMock := NewMockLogger(ctrl)
 
@@ -152,33 +140,6 @@ func TestWorker_doRequestRestrictionByDomain(t *testing.T) {
 		return output
 	}
 
-	requestStrategyMock.EXPECT().CheckRestriction().Return(true).Times(requestNum)
-
-	requestStrategyMock.EXPECT().Resource(
-		gomock.AssignableToTypeOf(&Request{}),
-	).DoAndReturn(
-		func(r *Request) (string, error) { return r.URLHost(), nil },
-	).Times(requestNum)
-
-	requestSemaphoreMock.EXPECT().Acquire(
-		ctx, gomock.AssignableToTypeOf(""),
-	).Do(
-		func(ctx context.Context, resource string) error {
-			if resource != "golang.org" {
-				t.Fatalf("expected golang.org, but got %s.\n", resource)
-			}
-			return nil
-		},
-	).Times(requestNum)
-
-	requestSemaphoreMock.EXPECT().Release(
-		gomock.AssignableToTypeOf(""),
-	).Do(
-		func(resource string) {
-			// do nothing
-		},
-	).Times(requestNum)
-
 	httpClientMock.EXPECT().Do(
 		gomock.AssignableToTypeOf(&http.Request{}),
 	).DoAndReturn(
@@ -189,11 +150,8 @@ func TestWorker_doRequestRestrictionByDomain(t *testing.T) {
 
 	worker := newWorker(
 		nil,
-		requestStrategyMock,
-		requestSemaphoreMock,
 		httpClientMock,
 		loggerMock,
-		10,
 		[]func(request *Request){},
 		[]func(response *Response){},
 		nil,
@@ -209,164 +167,6 @@ func TestWorker_doRequestRestrictionByDomain(t *testing.T) {
 		if returnValue.Request.URL != "https://golang.org/" {
 			t.Fatalf("expect request url %s, but got %s", "https://golang.org/", returnValue.Request.URL)
 		}
-	}
-}
-
-// TestWorker_doRequestSuccess2
-// CheckRestriction: false
-func TestWorker_doRequestNotCheckRestriction(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	requestStrategyMock := NewMockRequestRestrictionStrategy(ctrl)
-	requestSemaphoreMock := NewMockRequestSemaphore(ctrl)
-	httpClientMock := NewMockHTTPClient(ctrl)
-	loggerMock := NewMockLogger(ctrl)
-
-	request, err := NewGetRequest("https://golang.org/")
-	if err != nil {
-		t.Fatalf("fail to create request: %v", err)
-	}
-
-	const requestNum = 100
-
-	inputPipeline := func() chan *Request {
-		output := make(chan *Request)
-		go func() {
-			defer close(output)
-			for i := 0; i < requestNum; i++ {
-				output <- request
-			}
-		}()
-		return output
-	}
-
-	requestStrategyMock.EXPECT().CheckRestriction().Return(false).Times(requestNum)
-
-	httpClientMock.EXPECT().Do(
-		gomock.AssignableToTypeOf(&http.Request{}),
-	).DoAndReturn(
-		func(r *http.Request) (*http.Response, error) {
-			return &http.Response{Request: r}, nil
-		},
-	).Times(requestNum)
-
-	worker := newWorker(
-		nil,
-		requestStrategyMock,
-		requestSemaphoreMock,
-		httpClientMock,
-		loggerMock,
-		10,
-		[]func(request *Request){},
-		[]func(response *Response){},
-		nil,
-	)
-
-	returnValueChan, err := worker.doRequest(inputPipeline())
-
-	if err != nil {
-		t.Fatalf("fail to Worker#doRequest: %v", err)
-	}
-
-	for returnValue := range returnValueChan {
-		if returnValue.Request.URL != "https://golang.org/" {
-			t.Fatalf("expect request url %s, but got %s", "https://golang.org/", returnValue.Request.URL)
-		}
-	}
-}
-
-func TestWorker_doRequestRetry(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	ctx := context.Background()
-
-	requestStrategyMock := NewMockRequestRestrictionStrategy(ctrl)
-	requestSemaphoreMock := NewMockRequestSemaphore(ctrl)
-	httpClientMock := NewMockHTTPClient(ctrl)
-	workerQueueMock := NewMockWorkerQueue(ctrl)
-	loggerMock := NewMockLogger(ctrl)
-
-	const requestURL = "https://golang.org/"
-
-	request, err := NewGetRequest(requestURL)
-	if err != nil {
-		t.Fatalf("fail to create request: %v", err)
-	}
-
-	const requestNum = 100
-
-	inputPipeline := func() chan *Request {
-		output := make(chan *Request)
-		go func() {
-			defer close(output)
-			for i := 0; i < requestNum; i++ {
-				output <- request
-			}
-		}()
-		return output
-	}
-
-	requestStrategyMock.EXPECT().CheckRestriction().Return(true).Times(requestNum)
-
-	requestStrategyMock.EXPECT().ChangePriorityWhenRestricted(
-		gomock.AssignableToTypeOf(&Request{}),
-	).Do(
-		func(r *Request) {
-			// do nothing
-		},
-	).Times(requestNum)
-
-	requestStrategyMock.EXPECT().Resource(
-		gomock.AssignableToTypeOf(&Request{}),
-	).DoAndReturn(
-		func(r *Request) (string, error) { return r.URLHost(), nil },
-	).Times(requestNum)
-
-	requestSemaphoreMock.EXPECT().Acquire(
-		ctx, gomock.AssignableToTypeOf(""),
-	).DoAndReturn(
-		func(ctx context.Context, resource string) error {
-			if resource != "golang.org" {
-				t.Fatalf("expected golang.org, but got %s.\n", resource)
-			}
-			// for retry
-			return errors.New("retry request")
-		},
-	).Times(requestNum)
-
-	workerQueueMock.EXPECT().RetryRequest(
-		gomock.AssignableToTypeOf(&Request{}),
-	).DoAndReturn(
-		func(r *Request) error {
-			return errors.New("")
-		},
-	).Times(requestNum)
-
-	loggerMock.EXPECT().Infof("retry %s because worker failed to acquire resource.", requestURL).Times(requestNum)
-	loggerMock.EXPECT().Errorf("fail to retry %s. this request is lost.").Times(requestNum)
-
-	worker := newWorker(
-		workerQueueMock,
-		requestStrategyMock,
-		requestSemaphoreMock,
-		httpClientMock,
-		loggerMock,
-		10,
-		[]func(request *Request){},
-		[]func(response *Response){},
-		nil,
-	)
-
-	returnValueChan, err := worker.doRequest(inputPipeline())
-
-	if err != nil {
-		t.Fatalf("fail to Worker#doRequest: %v", err)
-	}
-
-	for returnValue := range returnValueChan {
-		t.Fatalf("expect no response, got %s", returnValue.Request.URL)
 	}
 }
 
@@ -383,10 +183,7 @@ func TestWorker_applySpiderReturnNewRequests(t *testing.T) {
 	worker := newWorker(
 		nil,
 		nil,
-		nil,
-		nil,
 		loggerMock,
-		10,
 		[]func(request *Request){},
 		[]func(response *Response){},
 		func(response *Response) ([]*Request, error) {
@@ -437,10 +234,7 @@ func TestWorker_applySpiderReturnError(t *testing.T) {
 	worker := newWorker(
 		nil,
 		nil,
-		nil,
-		nil,
 		loggerMock,
-		10,
 		[]func(request *Request){},
 		[]func(response *Response){},
 		func(response *Response) ([]*Request, error) {
@@ -493,10 +287,7 @@ func TestWorker_publishRequestPublish(t *testing.T) {
 	worker := newWorker(
 		workerQueueMock,
 		nil,
-		nil,
-		nil,
 		loggerMock,
-		10,
 		[]func(request *Request){},
 		[]func(response *Response){},
 		nil,
@@ -539,10 +330,7 @@ func TestWorker_publishRequestFailToPublish(t *testing.T) {
 	worker := newWorker(
 		workerQueueMock,
 		nil,
-		nil,
-		nil,
 		loggerMock,
-		10,
 		[]func(request *Request){},
 		[]func(response *Response){},
 		nil,
