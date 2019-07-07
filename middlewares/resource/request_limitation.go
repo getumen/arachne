@@ -21,7 +21,7 @@ func NewRequestCounter(maxRequest int64) *RequestCounter {
 
 // RequestMiddleware is a request middleware
 func (r *RequestCounter) RequestMiddleware(*lucy.Request) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	r.sema.Acquire(ctx, 1)
 }
 

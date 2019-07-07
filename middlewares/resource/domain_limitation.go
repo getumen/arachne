@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"log"
 	"sync"
 
 	"github.com/getumen/lucy"
@@ -18,7 +19,14 @@ func init() {
 
 // InMemoryDomainCounter is an in-memory domain counter
 type InMemoryDomainCounter struct {
-	maxRequestCounter int64
+	maxRequestCount int64
+}
+
+// NewInMemoryDomainCounter is the InMemoryDomainCounter constructor
+func NewInMemoryDomainCounter(maxRequestCount int64) *InMemoryDomainCounter {
+	return &InMemoryDomainCounter{
+		maxRequestCount: maxRequestCount,
+	}
 }
 
 // RequestMiddleware is request middleware
@@ -27,7 +35,7 @@ func (c *InMemoryDomainCounter) RequestMiddleware(request *lucy.Request) {
 	defer mutex.Unlock()
 	count, ok := domainCounter[request.URLHost()]
 	if ok {
-		if count > c.maxRequestCounter {
+		if count >= c.maxRequestCount {
 			request.Meta["retry"] = true
 			return
 		}
@@ -42,7 +50,12 @@ func (c *InMemoryDomainCounter) ResponseMiddleware(response *lucy.Response) {
 	defer mutex.Unlock()
 	count, ok := domainCounter[response.Request.URLHost()]
 	if ok {
-		count--
-		domainCounter[response.Request.URLHost()] = count
+		if count > 0 {
+			count--
+			domainCounter[response.Request.URLHost()] = count
+		} else {
+			// this never happen
+			log.Fatalf("the InMemoryDomainCounter is broken. count cannot be negative.")
+		}
 	}
 }
