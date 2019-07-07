@@ -54,8 +54,8 @@ func TestMemoryWorkerQueue_RetryRequest(t *testing.T) {
 		queue: sortedset.New(),
 	}
 	wg := sync.WaitGroup{}
-	wg.Add(100)
 	for i := 0; i < 1000; i++ {
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 100; j++ {
@@ -77,8 +77,8 @@ func TestMemoryWorkerQueue_PublishRequest(t *testing.T) {
 		queue: sortedset.New(),
 	}
 	wg := sync.WaitGroup{}
-	wg.Add(100)
 	for i := 0; i < 1000; i++ {
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 100; j++ {
