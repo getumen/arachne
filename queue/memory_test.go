@@ -22,9 +22,10 @@ func TestMemoryWorkerQueue_SubscribeRequests(t *testing.T) {
 	go func() {
 		for i := 0; i < num; i++ {
 			r, _ := lucy.NewGetRequest(fmt.Sprintf("https://golang.org/%d", i))
-			memoryQueueMutex.Lock()
+			cond.L.Lock()
 			q.queue.AddOrUpdate(r.URL, sortedset.SCORE(r.Priority), r)
-			memoryQueueMutex.Unlock()
+			cond.Signal()
+			cond.L.Unlock()
 		}
 		cancelFunc()
 	}()
@@ -37,15 +38,15 @@ func TestMemoryWorkerQueue_SubscribeRequests(t *testing.T) {
 	}
 	for request := range ch {
 		if request.URLHost() != "golang.org" {
-			t.Fatalf("url mismatch")
+			t.Fatalf("url domain mismatch")
 		}
 		counter++
 	}
-	memoryQueueMutex.RLock()
+	cond.L.Lock()
 	if counter+q.queue.GetCount() != num {
 		t.Fatalf("expected %d, but got %d. some request missing.", num, counter+q.queue.GetCount())
 	}
-	memoryQueueMutex.RUnlock()
+	cond.L.Unlock()
 }
 
 func TestMemoryWorkerQueue_RetryRequest(t *testing.T) {
