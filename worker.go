@@ -9,12 +9,12 @@ import (
 
 // Worker handles scheduled requests.
 type Worker struct {
-	workerQueue        WorkerQueue
-	httpClient         HTTPClient
-	logger             Logger
-	requestMiddlewares []func(request *Request)
-	responseMidlewares []func(response *Response)
-	spider             func(response *Response) ([]*Request, error)
+	workerQueue         WorkerQueue
+	httpClient          HTTPClient
+	logger              Logger
+	requestMiddlewares  []func(request *Request)
+	responseMiddlewares []func(response *Response)
+	spider              func(response *Response) ([]*Request, error)
 }
 
 func newWorker(
@@ -22,16 +22,16 @@ func newWorker(
 	httpClient HTTPClient,
 	logger Logger,
 	requestMiddlewares []func(request *Request),
-	responseMidlewares []func(response *Response),
+	responseMiddlewares []func(response *Response),
 	spider func(response *Response) ([]*Request, error),
 ) *Worker {
 	return &Worker{
-		workerQueue:        workerQueue,
-		httpClient:         httpClient,
-		logger:             logger,
-		requestMiddlewares: requestMiddlewares,
-		responseMidlewares: responseMidlewares,
-		spider:             spider,
+		workerQueue:         workerQueue,
+		httpClient:          httpClient,
+		logger:              logger,
+		requestMiddlewares:  requestMiddlewares,
+		responseMiddlewares: responseMiddlewares,
+		spider:              spider,
 	}
 }
 
@@ -101,7 +101,7 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 				}
 
 				// apply responseMiddlewares
-				for _, middlewareFunc := range w.responseMidlewares {
+				for _, middlewareFunc := range w.responseMiddlewares {
 					middlewareFunc(response)
 					if response == nil {
 						// discard response if nil
