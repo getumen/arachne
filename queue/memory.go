@@ -8,10 +8,10 @@ import (
 	"github.com/wangjia184/sortedset"
 )
 
-var memoryQueueMutex sync.RWMutex
+var cond *sync.Cond
 
 func init() {
-	memoryQueueMutex = sync.RWMutex{}
+	cond = sync.NewCond(&sync.Mutex{})
 }
 
 type memoryWorkerQueue struct {
@@ -40,34 +40,47 @@ func (q *memoryWorkerQueue) SubscribeRequests(ctx context.Context) (<-chan *lucy
 			if !ok {
 				break
 			}
-			memoryQueueMutex.RLock()
+			cond.L.Lock()
 			node := q.queue.PopMin()
 			if node != nil {
 				request, ok := node.Value.(*lucy.Request)
 				if ok {
 					requestChan <- request
 				}
+			} else {
+				cond.Wait()
 			}
-			memoryQueueMutex.RUnlock()
+			cond.L.Unlock()
+		}
+	}()
+
+	// notify context canceled to prevent cond from waiting permanently
+	go func() {
+		select {
+		//wait canncel
+		case <-ctx.Done():
+			cond.Signal()
 		}
 	}()
 
 	return requestChan, nil
 }
 func (q *memoryWorkerQueue) RetryRequest(request *lucy.Request) error {
-	memoryQueueMutex.Lock()
-	defer memoryQueueMutex.Unlock()
+	cond.L.Lock()
+	defer cond.L.Unlock()
 	if q.queue.GetByKey(request.URL) == nil {
 		q.queue.AddOrUpdate(request.URL, sortedset.SCORE(request.Priority), request)
+		cond.Signal()
 	}
 	return nil
 }
 
 func (q *memoryWorkerQueue) PublishRequest(request *lucy.Request) error {
-	memoryQueueMutex.Lock()
-	defer memoryQueueMutex.Unlock()
+	cond.L.Lock()
+	defer cond.L.Unlock()
 	if q.queue.GetByKey(request.URL) == nil {
 		q.queue.AddOrUpdate(request.URL, sortedset.SCORE(request.Priority), request)
+		cond.Signal()
 	}
 	return nil
 }
