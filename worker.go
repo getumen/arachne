@@ -9,12 +9,12 @@ import (
 
 // Worker handles scheduled requests.
 type Worker struct {
-	workerQueue        WorkerQueue
-	httpClient         HTTPClient
-	logger             Logger
-	requestMiddlewares []func(request *Request)
-	responseMidlewares []func(response *Response)
-	spider             func(response *Response) ([]*Request, error)
+	workerQueue         WorkerQueue
+	httpClient          HTTPClient
+	logger              Logger
+	requestMiddlewares  []func(request *Request)
+	responseMiddlewares []func(response *Response)
+	spider              func(response *Response) ([]*Request, error)
 }
 
 func newWorker(
@@ -22,22 +22,60 @@ func newWorker(
 	httpClient HTTPClient,
 	logger Logger,
 	requestMiddlewares []func(request *Request),
-	responseMidlewares []func(response *Response),
+	responseMiddlewares []func(response *Response),
 	spider func(response *Response) ([]*Request, error),
 ) *Worker {
 	return &Worker{
-		workerQueue:        workerQueue,
-		httpClient:         httpClient,
-		logger:             logger,
-		requestMiddlewares: requestMiddlewares,
-		responseMidlewares: responseMidlewares,
-		spider:             spider,
+		workerQueue:         workerQueue,
+		httpClient:          httpClient,
+		logger:              logger,
+		requestMiddlewares:  requestMiddlewares,
+		responseMiddlewares: responseMiddlewares,
+		spider:              spider,
 	}
 }
 
 // Start kicks worker off.
-func (*Worker) Start(ctx context.Context) {
+func (w *Worker) Start(ctx context.Context) error {
+	requestPipeline, err := w.subscribe(ctx)
+	if err != nil {
+		return xerrors.Errorf("fail to subscribe request: %v", err)
+	}
+	responsePipeline, err := w.doRequest(requestPipeline)
+	if err != nil {
+		return xerrors.Errorf("fail to initialize request pipeline: %v", err)
+	}
+	nextRequestPipeline, err := w.applySpider(responsePipeline)
+	if err != nil {
+		return xerrors.Errorf("fail to initialize spider pipeline: %v", err)
+	}
+	err = w.publishRequest(nextRequestPipeline)
+	return xerrors.Errorf("fail to publish request: %v", err)
+}
 
+// StartWithFirstRequest kicks worker off with first request.
+func (w *Worker) StartWithFirstRequest(ctx context.Context, URL string) error {
+	requestPipeline, err := w.subscribe(ctx)
+	if err != nil {
+		return xerrors.Errorf("fail to subscribe request: %v", err)
+	}
+	responsePipeline, err := w.doRequest(requestPipeline)
+	if err != nil {
+		return xerrors.Errorf("fail to initialize request pipeline: %v", err)
+	}
+	nextRequestPipeline, err := w.applySpider(responsePipeline)
+	if err != nil {
+		return xerrors.Errorf("fail to initialize spider pipeline: %v", err)
+	}
+
+	request, err := NewGetRequest(URL)
+	if err != nil {
+		return xerrors.Errorf("fail to create initial request: %v", err)
+	}
+	nextRequestPipeline <- request
+
+	err = w.publishRequest(nextRequestPipeline)
+	return xerrors.Errorf("fail to publish request: %v", err)
 }
 
 func (w *Worker) subscribe(ctx context.Context) (<-chan *Request, error) {
@@ -101,7 +139,7 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 				}
 
 				// apply responseMiddlewares
-				for _, middlewareFunc := range w.responseMidlewares {
+				for _, middlewareFunc := range w.responseMiddlewares {
 					middlewareFunc(response)
 					if response == nil {
 						// discard response if nil
@@ -122,7 +160,7 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 	return responseChan, nil
 }
 
-func (w *Worker) applySpider(responseChan <-chan *Response) (<-chan *Request, error) {
+func (w *Worker) applySpider(responseChan <-chan *Response) (chan *Request, error) {
 	requestChan := make(chan *Request)
 
 	go func() {

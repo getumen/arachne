@@ -54,7 +54,7 @@ func (c *InMemoryDomainCounter) ResponseMiddleware(response *lucy.Response) {
 			count--
 			domainCounter[response.Request.URLHost()] = count
 		} else {
-			// this never happen
+			// this never happened
 			log.Fatalf("the InMemoryDomainCounter is broken. count cannot be negative.")
 		}
 	}
