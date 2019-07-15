@@ -7,6 +7,9 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// channelSize is worker chennel size
+const channelSize = 16
+
 // Worker handles scheduled requests.
 type Worker struct {
 	workerQueue         WorkerQueue
@@ -79,7 +82,7 @@ func (w *Worker) StartWithFirstRequest(ctx context.Context, URL string) error {
 }
 
 func (w *Worker) subscribe(ctx context.Context) (<-chan *Request, error) {
-	output := make(chan *Request)
+	output := make(chan *Request, channelSize)
 	requestChan, err := w.workerQueue.SubscribeRequests(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("fail to subscribe requests: %w",
@@ -89,6 +92,7 @@ func (w *Worker) subscribe(ctx context.Context) (<-chan *Request, error) {
 		defer close(output)
 
 		for request := range requestChan {
+			w.logger.Debugf("subscribe %s", request.URL)
 			output <- request
 		}
 	}()
@@ -96,7 +100,7 @@ func (w *Worker) subscribe(ctx context.Context) (<-chan *Request, error) {
 }
 
 func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error) {
-	responseChan := make(chan *Response)
+	responseChan := make(chan *Response, channelSize)
 
 	// TODO: add goroutine supervisor
 	go func() {
@@ -125,6 +129,7 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 						request, err)
 					return
 				}
+				w.logger.Debugf("request %s", httpRequest.URL.String())
 				httpResponse, err := w.httpClient.Do(httpRequest)
 				if err != nil {
 					w.logger.Warnf("fail to get http.Response of http.Request(%v): %v",
@@ -161,11 +166,12 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 }
 
 func (w *Worker) applySpider(responseChan <-chan *Response) (chan *Request, error) {
-	requestChan := make(chan *Request)
+	requestChan := make(chan *Request, channelSize)
 
 	go func() {
 		defer close(requestChan)
 		for response := range responseChan {
+			w.logger.Debugf("apply Spider to %s", response.Request.URL)
 			nextRequests, err := w.spider(response)
 			if err != nil {
 				w.logger.Infof("spider error: %v", err)
@@ -182,6 +188,7 @@ func (w *Worker) applySpider(responseChan <-chan *Response) (chan *Request, erro
 
 func (w *Worker) publishRequest(requestChan <-chan *Request) error {
 	for request := range requestChan {
+		w.logger.Debugf("publish %s", request.URL)
 		err := w.workerQueue.PublishRequest(request)
 		if err != nil {
 			w.logger.Errorf("fail to publish request: %s", request.URL)
