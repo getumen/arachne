@@ -47,6 +47,9 @@ func NewRequestFromHTTPRequest(request *http.Request) (*Request, error) {
 	r.URL = request.URL.String()
 	r.requestURL = request.URL
 	r.Method = request.Method
+	if r.Header == nil {
+		r.Header = map[string][]string{}
+	}
 	for key, values := range request.Header {
 		for _, value := range values {
 			r.Header.Add(key, value)

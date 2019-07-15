@@ -59,7 +59,7 @@ func TestWorker_subscribeSuccess(t *testing.T) {
 
 	workerQueueMock := NewMockWorkerQueue(ctrl)
 	loggerMock := NewMockLogger(ctrl)
-
+	loggerMock.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
 	workerQueueMock.EXPECT().SubscribeRequests(ctx).Return(subscribeChan, nil)
 
 	worker := newWorker(
@@ -97,6 +97,7 @@ func TestWorker_subscribeError(t *testing.T) {
 
 	workerQueueMock := NewMockWorkerQueue(ctrl)
 	loggerMock := NewMockLogger(ctrl)
+	loggerMock.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
 
 	workerQueueMock.EXPECT().SubscribeRequests(ctx).Return(nil, xerrors.New("some error."))
 
@@ -121,6 +122,7 @@ func TestWorker_doRequestRestrictionByDomain(t *testing.T) {
 
 	httpClientMock := NewMockHTTPClient(ctrl)
 	loggerMock := NewMockLogger(ctrl)
+	loggerMock.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
 
 	request, err := NewGetRequest("https://golang.org/")
 	if err != nil {
@@ -175,6 +177,7 @@ func TestWorker_applySpiderReturnNewRequests(t *testing.T) {
 	defer ctrl.Finish()
 
 	loggerMock := NewMockLogger(ctrl)
+	loggerMock.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
 
 	const requestURL = "https://golang.org/"
 
@@ -202,7 +205,7 @@ func TestWorker_applySpiderReturnNewRequests(t *testing.T) {
 		go func() {
 			defer close(output)
 			for i := 0; i < responseNum; i++ {
-				output <- &Response{}
+				output <- &Response{Request: &Request{URL: "test"}}
 			}
 		}()
 		return output
@@ -230,6 +233,7 @@ func TestWorker_applySpiderReturnError(t *testing.T) {
 	defer ctrl.Finish()
 
 	loggerMock := NewMockLogger(ctrl)
+	loggerMock.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
 
 	worker := newWorker(
 		nil,
@@ -253,7 +257,7 @@ func TestWorker_applySpiderReturnError(t *testing.T) {
 		go func() {
 			defer close(output)
 			for i := 0; i < responseNum; i++ {
-				output <- &Response{}
+				output <- &Response{Request: &Request{URL: "test"}}
 			}
 		}()
 		return output
@@ -282,6 +286,8 @@ func TestWorker_publishRequestPublish(t *testing.T) {
 	defer ctrl.Finish()
 
 	loggerMock := NewMockLogger(ctrl)
+	loggerMock.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
+
 	workerQueueMock := NewMockWorkerQueue(ctrl)
 
 	worker := newWorker(
@@ -325,6 +331,8 @@ func TestWorker_publishRequestFailToPublish(t *testing.T) {
 	defer ctrl.Finish()
 
 	loggerMock := NewMockLogger(ctrl)
+	loggerMock.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
+
 	workerQueueMock := NewMockWorkerQueue(ctrl)
 
 	worker := newWorker(
