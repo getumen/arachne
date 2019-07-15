@@ -151,3 +151,17 @@ func (r *Response) FollowRequest(urlString string) (*Request, error) {
 	}
 	return req, nil
 }
+
+// ContentType returns detected Content-Type of the response body.
+// If it cannot determine a more specific one, it returns "application/octet-stream".
+func (r *Response) ContentType() string {
+	return r.Headers.Get("Content-Type")
+}
+
+// Text returns string(Response.Body)
+// Note that this method does not decode body.
+// To ensure that the Response.Body is decoded,
+// use http.Client with DefaultTransport.
+func (r *Response) Text() string {
+	return string(r.Body)
+}
