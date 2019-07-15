@@ -3,6 +3,7 @@ module github.com/getumen/lucy
 go 1.12
 
 require (
+	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/golang/mock v1.3.1
 	github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94
 	github.com/wangjia184/sortedset v0.0.0-20160527075905-f5d03557ba30
