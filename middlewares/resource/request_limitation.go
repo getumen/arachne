@@ -3,7 +3,7 @@ package resource
 import (
 	"context"
 
-	"github.com/getumen/lucy"
+	"github.com/getumen/arachne"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -20,12 +20,12 @@ func NewRequestCounter(maxRequest int64) *RequestCounter {
 }
 
 // RequestMiddleware is a request middleware
-func (r *RequestCounter) RequestMiddleware(*lucy.Request) {
+func (r *RequestCounter) RequestMiddleware(request *arachne.Request) {
 	ctx := context.Background()
 	r.sema.Acquire(ctx, 1)
 }
 
 // ResponseMiddleware is a response middleware
-func (r *RequestCounter) ResponseMiddleware(*lucy.Response) {
+func (r *RequestCounter) ResponseMiddleware(response *arachne.Response) {
 	r.sema.Release(1)
 }

@@ -6,19 +6,19 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/getumen/lucy"
+	"github.com/getumen/arachne"
 )
 
 // DownloadInternet is a sample spider that follows all link in the html.
-func DownloadInternet(response *lucy.Response) ([]*lucy.Request, error) {
-	requests := make([]*lucy.Request, 0)
+func DownloadInternet(response *arachne.Response) ([]*arachne.Request, error) {
+	requests := make([]*arachne.Request, 0)
 	if strings.Contains(response.ContentType(), "text/html") {
 		doc, err := goquery.NewDocumentFromReader(strings.NewReader(response.Text()))
 		if err != nil {
 			log.Printf("fail to parse html in %s", response.Request.URL)
 		}
 		title := doc.Find("title").Text()
-		fmt.Printf(title)
+		fmt.Println(title)
 		doc.Find("a").Each(func(_ int, s *goquery.Selection) {
 			link, exists := s.Attr("href")
 			if exists {

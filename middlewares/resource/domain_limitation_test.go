@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/getumen/lucy"
+	"github.com/getumen/arachne"
 )
 
 func TestInMemoryDomainCounter_RequestMiddleware(t *testing.T) {
@@ -20,7 +20,7 @@ func TestInMemoryDomainCounter_RequestMiddleware(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			request, _ := lucy.NewGetRequest("https://golang.org/")
+			request, _ := arachne.NewGetRequest("https://golang.org/")
 			target.RequestMiddleware(request)
 			if retry, ok := request.Meta["retry"]; ok {
 				if retryFlag, ok := retry.(bool); ok && retryFlag {
@@ -47,8 +47,8 @@ func TestInMemoryDomainCounter_ResponseMiddleware(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			request, _ := lucy.NewGetRequest("https://golang.org/")
-			response := &lucy.Response{Request: request}
+			request, _ := arachne.NewGetRequest("https://golang.org/")
+			response := &arachne.Response{Request: request}
 			target.ResponseMiddleware(response)
 		}()
 	}

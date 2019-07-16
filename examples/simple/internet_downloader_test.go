@@ -7,36 +7,44 @@ import (
 	"testing"
 	"time"
 
-	"github.com/getumen/lucy"
-	"github.com/getumen/lucy/logger"
-	"github.com/getumen/lucy/middlewares/resource"
-	"github.com/getumen/lucy/queue"
-	"github.com/getumen/lucy/spider"
+	"github.com/getumen/arachne"
+	"github.com/getumen/arachne/builder"
+	"github.com/getumen/arachne/logger"
+	"github.com/getumen/arachne/middlewares/resource"
+	"github.com/getumen/arachne/queue"
+	"github.com/getumen/arachne/spider"
 )
 
 func TestSimpleCrawler(t *testing.T) {
-	builder := lucy.NewWorkerBuilder()
-	builder.SetLogger(logger.NewStdoutLogger(lucy.DebugLevel))
-	builder.SetHTTPClient(&http.Client{})
-	queue, err := queue.NewMemoryWorkerQueue()
+	workerBuilder := builder.NewWorkerBuilder()
+	workerBuilder.SetLogger(logger.NewStdoutLogger(arachne.InfoLevel))
+	httpClient := &http.Client{}
+	httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	workerBuilder.SetHTTPClient(httpClient)
+	memoryQueue, err := queue.NewMemoryWorkerQueue()
 	if err != nil {
 		log.Fatalf("fail to create queue: %v", err)
 	}
-	builder.SetWorkerQueue(queue)
-	builder.SetSpider(spider.DownloadInternet)
+	workerBuilder.SetWorkerQueue(memoryQueue)
+	workerBuilder.SetSpider(spider.DownloadInternet)
 
-	worker, err := builder.Build()
+	worker, err := workerBuilder.Build()
 	if err != nil {
 		log.Fatalf("fail to create worker: %v", err)
 	}
 
 	domainRestriction := resource.NewInMemoryDomainCounter(1)
-	builder.AddRequestMiddleware(domainRestriction.RequestMiddleware)
-	builder.AddResponseMiddleware(domainRestriction.ResponseMiddleware)
+
+	worker.RequestMiddlewares = append(worker.RequestMiddlewares, domainRestriction.RequestMiddleware)
+	worker.ResponseMiddlewares = append(worker.ResponseMiddlewares, domainRestriction.ResponseMiddleware)
 
 	workerRestriction := resource.NewRequestCounter(1)
-	builder.AddRequestMiddleware(workerRestriction.RequestMiddleware)
-	builder.AddResponseMiddleware(workerRestriction.ResponseMiddleware)
+	worker.RequestMiddlewares = append(worker.RequestMiddlewares, workerRestriction.RequestMiddleware)
+	worker.ResponseMiddlewares = append(worker.ResponseMiddlewares, workerRestriction.ResponseMiddleware)
+
+	worker.RequestMiddlewares = append(worker.RequestMiddlewares, worker.RetryMiddleware)
 
 	ctx := context.Background()
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/getumen/lucy"
+	"github.com/getumen/arachne"
 	"github.com/wangjia184/sortedset"
 )
 
@@ -22,7 +22,7 @@ func TestMemoryWorkerQueue_SubscribeRequests(t *testing.T) {
 
 	go func() {
 		for i := 0; i < num; i++ {
-			r, _ := lucy.NewGetRequest(fmt.Sprintf("https://golang.org/%d", i))
+			r, _ := arachne.NewGetRequest(fmt.Sprintf("https://golang.org/%d", i))
 			cond.L.Lock()
 			q.queue.AddOrUpdate(r.URL, sortedset.SCORE(r.Priority), r)
 			cond.Signal()
@@ -61,7 +61,7 @@ func TestMemoryWorkerQueue_SubscribeRequestsSlowPublication(t *testing.T) {
 
 	go func() {
 		for i := 0; i < num; i++ {
-			r, _ := lucy.NewGetRequest(fmt.Sprintf("https://golang.org/%d", i))
+			r, _ := arachne.NewGetRequest(fmt.Sprintf("https://golang.org/%d", i))
 			cond.L.Lock()
 			q.queue.AddOrUpdate(r.URL, sortedset.SCORE(r.Priority), r)
 			cond.Signal()
@@ -101,7 +101,7 @@ func TestMemoryWorkerQueue_SubscribeRequestsNoPublication(t *testing.T) {
 
 	go func() {
 		for i := 0; i < num; i++ {
-			r, _ := lucy.NewGetRequest(fmt.Sprintf("https://golang.org/%d", i))
+			r, _ := arachne.NewGetRequest(fmt.Sprintf("https://golang.org/%d", i))
 			cond.L.Lock()
 			q.queue.AddOrUpdate(r.URL, sortedset.SCORE(r.Priority), r)
 			cond.Signal()
@@ -140,7 +140,7 @@ func TestMemoryWorkerQueue_RetryRequest(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 100; j++ {
-				r, _ := lucy.NewGetRequest(fmt.Sprintf("https://golang.org/%d", j))
+				r, _ := arachne.NewGetRequest(fmt.Sprintf("https://golang.org/%d", j))
 				q.RetryRequest(r)
 			}
 		}()
@@ -163,7 +163,7 @@ func TestMemoryWorkerQueue_PublishRequest(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 100; j++ {
-				r, _ := lucy.NewGetRequest(fmt.Sprintf("https://golang.org/%d", j))
+				r, _ := arachne.NewGetRequest(fmt.Sprintf("https://golang.org/%d", j))
 				q.PublishRequest(r)
 			}
 		}()
