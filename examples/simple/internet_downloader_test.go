@@ -7,17 +7,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/getumen/lucy"
-	"github.com/getumen/lucy/builder"
-	"github.com/getumen/lucy/logger"
-	"github.com/getumen/lucy/middlewares/resource"
-	"github.com/getumen/lucy/queue"
-	"github.com/getumen/lucy/spider"
+	"github.com/getumen/arachne"
+	"github.com/getumen/arachne/builder"
+	"github.com/getumen/arachne/logger"
+	"github.com/getumen/arachne/middlewares/resource"
+	"github.com/getumen/arachne/queue"
+	"github.com/getumen/arachne/spider"
 )
 
 func TestSimpleCrawler(t *testing.T) {
 	workerBuilder := builder.NewWorkerBuilder()
-	workerBuilder.SetLogger(logger.NewStdoutLogger(lucy.InfoLevel))
+	workerBuilder.SetLogger(logger.NewStdoutLogger(arachne.InfoLevel))
 	httpClient := &http.Client{}
 	httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse

@@ -3,7 +3,7 @@ package logger
 import (
 	"testing"
 
-	"github.com/getumen/lucy"
+	"github.com/getumen/arachne"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -12,27 +12,27 @@ func TestStreamLogger_Debugf(t *testing.T) {
 	defer ctrl.Finish()
 
 	tests := []struct {
-		logLevel lucy.LogLevel
+		logLevel arachne.LogLevel
 		callNum  int
 	}{
 		{
-			lucy.DebugLevel,
+			arachne.DebugLevel,
 			1,
 		},
 		{
-			lucy.InfoLevel,
+			arachne.InfoLevel,
 			0,
 		},
 		{
-			lucy.WarnLevel,
+			arachne.WarnLevel,
 			0,
 		},
 		{
-			lucy.ErrorLevel,
+			arachne.ErrorLevel,
 			0,
 		},
 		{
-			lucy.CriticalLevel,
+			arachne.CriticalLevel,
 			0,
 		},
 	}
@@ -52,27 +52,27 @@ func TestStreamLogger_Infof(t *testing.T) {
 	defer ctrl.Finish()
 
 	tests := []struct {
-		logLevel lucy.LogLevel
+		logLevel arachne.LogLevel
 		callNum  int
 	}{
 		{
-			lucy.DebugLevel,
+			arachne.DebugLevel,
 			1,
 		},
 		{
-			lucy.InfoLevel,
+			arachne.InfoLevel,
 			1,
 		},
 		{
-			lucy.WarnLevel,
+			arachne.WarnLevel,
 			0,
 		},
 		{
-			lucy.ErrorLevel,
+			arachne.ErrorLevel,
 			0,
 		},
 		{
-			lucy.CriticalLevel,
+			arachne.CriticalLevel,
 			0,
 		},
 	}
@@ -92,27 +92,27 @@ func TestStreamLogger_Warnf(t *testing.T) {
 	defer ctrl.Finish()
 
 	tests := []struct {
-		logLevel lucy.LogLevel
+		logLevel arachne.LogLevel
 		callNum  int
 	}{
 		{
-			lucy.DebugLevel,
+			arachne.DebugLevel,
 			1,
 		},
 		{
-			lucy.InfoLevel,
+			arachne.InfoLevel,
 			1,
 		},
 		{
-			lucy.WarnLevel,
+			arachne.WarnLevel,
 			1,
 		},
 		{
-			lucy.ErrorLevel,
+			arachne.ErrorLevel,
 			0,
 		},
 		{
-			lucy.CriticalLevel,
+			arachne.CriticalLevel,
 			0,
 		},
 	}
@@ -132,27 +132,27 @@ func TestStreamLogger_Errorf(t *testing.T) {
 	defer ctrl.Finish()
 
 	tests := []struct {
-		logLevel lucy.LogLevel
+		logLevel arachne.LogLevel
 		callNum  int
 	}{
 		{
-			lucy.DebugLevel,
+			arachne.DebugLevel,
 			1,
 		},
 		{
-			lucy.InfoLevel,
+			arachne.InfoLevel,
 			1,
 		},
 		{
-			lucy.WarnLevel,
+			arachne.WarnLevel,
 			1,
 		},
 		{
-			lucy.ErrorLevel,
+			arachne.ErrorLevel,
 			1,
 		},
 		{
-			lucy.CriticalLevel,
+			arachne.CriticalLevel,
 			0,
 		},
 	}
@@ -172,27 +172,27 @@ func TestStreamLogger_Criticalf(t *testing.T) {
 	defer ctrl.Finish()
 
 	tests := []struct {
-		logLevel lucy.LogLevel
+		logLevel arachne.LogLevel
 		callNum  int
 	}{
 		{
-			lucy.DebugLevel,
+			arachne.DebugLevel,
 			1,
 		},
 		{
-			lucy.InfoLevel,
+			arachne.InfoLevel,
 			1,
 		},
 		{
-			lucy.WarnLevel,
+			arachne.WarnLevel,
 			1,
 		},
 		{
-			lucy.ErrorLevel,
+			arachne.ErrorLevel,
 			1,
 		},
 		{
-			lucy.CriticalLevel,
+			arachne.CriticalLevel,
 			1,
 		},
 	}

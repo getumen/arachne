@@ -1,4 +1,4 @@
-package lucy
+package arachne
 
 import (
 	"context"

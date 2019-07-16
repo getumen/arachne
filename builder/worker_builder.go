@@ -1,18 +1,18 @@
 package builder
 
 import (
-	"github.com/getumen/lucy"
+	"github.com/getumen/arachne"
 	"golang.org/x/xerrors"
 )
 
 // WorkerBuilder is the builder of Worker.
 type WorkerBuilder struct {
-	WorkerQueue         lucy.WorkerQueue
-	Logger              lucy.Logger
-	HTTPClient          lucy.HTTPClient
-	RequestMiddlewares  []func(request *lucy.Request)
-	ResponseMiddlewares []func(response *lucy.Response)
-	Spider              func(response *lucy.Response) ([]*lucy.Request, error)
+	WorkerQueue         arachne.WorkerQueue
+	Logger              arachne.Logger
+	HTTPClient          arachne.HTTPClient
+	RequestMiddlewares  []func(request *arachne.Request)
+	ResponseMiddlewares []func(response *arachne.Response)
+	Spider              func(response *arachne.Response) ([]*arachne.Request, error)
 }
 
 // NewWorkerBuilder is builder of the WorkerBuilder that initialize fields by default values.
@@ -22,7 +22,7 @@ func NewWorkerBuilder() *WorkerBuilder {
 }
 
 // Build builds worker from given fields.
-func (w *WorkerBuilder) Build() (*lucy.Worker, error) {
+func (w *WorkerBuilder) Build() (*arachne.Worker, error) {
 	if w.WorkerQueue == nil {
 		return nil, xerrors.New("set worker queue")
 	}
@@ -36,12 +36,12 @@ func (w *WorkerBuilder) Build() (*lucy.Worker, error) {
 		return nil, xerrors.New("set spider")
 	}
 	if w.RequestMiddlewares == nil {
-		w.RequestMiddlewares = make([]func(*lucy.Request), 0)
+		w.RequestMiddlewares = make([]func(*arachne.Request), 0)
 	}
 	if w.ResponseMiddlewares == nil {
-		w.ResponseMiddlewares = make([]func(*lucy.Response), 0)
+		w.ResponseMiddlewares = make([]func(*arachne.Response), 0)
 	}
-	return &lucy.Worker{
+	return &arachne.Worker{
 		WorkerQueue:         w.WorkerQueue,
 		HTTPClient:          w.HTTPClient,
 		Logger:              w.Logger,
@@ -52,25 +52,25 @@ func (w *WorkerBuilder) Build() (*lucy.Worker, error) {
 }
 
 // SetWorkerQueue sets WorkerQueue implementation
-func (w *WorkerBuilder) SetWorkerQueue(workerQueue lucy.WorkerQueue) *WorkerBuilder {
+func (w *WorkerBuilder) SetWorkerQueue(workerQueue arachne.WorkerQueue) *WorkerBuilder {
 	w.WorkerQueue = workerQueue
 	return w
 }
 
 // SetLogger sets Logger imeplementation
-func (w *WorkerBuilder) SetLogger(logger lucy.Logger) *WorkerBuilder {
+func (w *WorkerBuilder) SetLogger(logger arachne.Logger) *WorkerBuilder {
 	w.Logger = logger
 	return w
 }
 
 // SetHTTPClient sets HTTPClient implementation
-func (w *WorkerBuilder) SetHTTPClient(httpClient lucy.HTTPClient) *WorkerBuilder {
+func (w *WorkerBuilder) SetHTTPClient(httpClient arachne.HTTPClient) *WorkerBuilder {
 	w.HTTPClient = httpClient
 	return w
 }
 
 // SetSpider sets spider
-func (w *WorkerBuilder) SetSpider(f func(response *lucy.Response) ([]*lucy.Request, error)) *WorkerBuilder {
+func (w *WorkerBuilder) SetSpider(f func(response *arachne.Response) ([]*arachne.Request, error)) *WorkerBuilder {
 	w.Spider = f
 	return w
 }
