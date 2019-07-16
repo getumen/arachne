@@ -31,7 +31,6 @@ func TestSimpleCrawler(t *testing.T) {
 	}
 
 	domainRestriction := resource.NewInMemoryDomainCounter(1)
-
 	builder.AddRequestMiddleware(domainRestriction.RequestMiddleware)
 	builder.AddResponseMiddleware(domainRestriction.ResponseMiddleware)
 
