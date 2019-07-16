@@ -4,7 +4,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/getumen/lucy"
+	"github.com/getumen/arachne"
 )
 
 var (
@@ -30,7 +30,7 @@ func NewInMemoryDomainCounter(maxRequestCount int64) *InMemoryDomainCounter {
 }
 
 // RequestMiddleware is request middleware
-func (c *InMemoryDomainCounter) RequestMiddleware(request *lucy.Request) {
+func (c *InMemoryDomainCounter) RequestMiddleware(request *arachne.Request) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	count, ok := domainCounter[request.URLHost()]
@@ -45,7 +45,7 @@ func (c *InMemoryDomainCounter) RequestMiddleware(request *lucy.Request) {
 }
 
 // ResponseMiddleware is response middleware
-func (c *InMemoryDomainCounter) ResponseMiddleware(response *lucy.Response) {
+func (c *InMemoryDomainCounter) ResponseMiddleware(response *arachne.Response) {
 	if retry, ok := response.Request.Meta["retry"]; ok {
 		if retryFlag, ok := retry.(bool); retryFlag && ok {
 			return

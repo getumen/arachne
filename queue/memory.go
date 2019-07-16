@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/getumen/lucy"
+	"github.com/getumen/arachne"
 	"github.com/wangjia184/sortedset"
 )
 
@@ -19,14 +19,14 @@ type memoryWorkerQueue struct {
 }
 
 // NewMemoryWorkerQueue return Memory WorkerQueue implementation
-func NewMemoryWorkerQueue() (lucy.WorkerQueue, error) {
+func NewMemoryWorkerQueue() (arachne.WorkerQueue, error) {
 	return &memoryWorkerQueue{
 		queue: sortedset.New(),
 	}, nil
 }
 
-func (q *memoryWorkerQueue) SubscribeRequests(ctx context.Context) (<-chan *lucy.Request, error) {
-	requestChan := make(chan *lucy.Request)
+func (q *memoryWorkerQueue) SubscribeRequests(ctx context.Context) (<-chan *arachne.Request, error) {
+	requestChan := make(chan *arachne.Request)
 
 	go func() {
 		defer close(requestChan)
@@ -43,7 +43,7 @@ func (q *memoryWorkerQueue) SubscribeRequests(ctx context.Context) (<-chan *lucy
 			cond.L.Lock()
 			node := q.queue.PopMin()
 			if node != nil {
-				request, ok := node.Value.(*lucy.Request)
+				request, ok := node.Value.(*arachne.Request)
 				if ok {
 					requestChan <- request
 				}
@@ -65,7 +65,7 @@ func (q *memoryWorkerQueue) SubscribeRequests(ctx context.Context) (<-chan *lucy
 
 	return requestChan, nil
 }
-func (q *memoryWorkerQueue) RetryRequest(request *lucy.Request) error {
+func (q *memoryWorkerQueue) RetryRequest(request *arachne.Request) error {
 	cond.L.Lock()
 	defer cond.L.Unlock()
 	if q.queue.GetByKey(request.URL) == nil {
@@ -75,7 +75,7 @@ func (q *memoryWorkerQueue) RetryRequest(request *lucy.Request) error {
 	return nil
 }
 
-func (q *memoryWorkerQueue) PublishRequest(request *lucy.Request) error {
+func (q *memoryWorkerQueue) PublishRequest(request *arachne.Request) error {
 	cond.L.Lock()
 	defer cond.L.Unlock()
 	if q.queue.GetByKey(request.URL) == nil {

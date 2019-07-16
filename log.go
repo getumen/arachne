@@ -1,8 +1,8 @@
-package lucy
+package arachne
 
-//go:generate mockgen -source=$GOFILE -destination=mock_$GOFILE -package=$GOPACKAGE -self_package=github.com/getumen/lucy
+//go:generate mockgen -source=$GOFILE -destination=mock_$GOFILE -package=$GOPACKAGE -self_package=github.com/getumen/arachne
 
-// Logger is interface for logging in lucy crawler.
+// Logger is interface for logging in arachne crawler.
 type Logger interface {
 	Debugf(format string, v ...interface{})
 	Infof(format string, v ...interface{})
