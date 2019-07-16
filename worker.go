@@ -12,12 +12,12 @@ const channelSize = 16
 
 // Worker handles scheduled requests.
 type Worker struct {
-	workerQueue         WorkerQueue
-	httpClient          HTTPClient
-	logger              Logger
-	requestMiddlewares  []func(request *Request)
-	responseMiddlewares []func(response *Response)
-	spider              func(response *Response) ([]*Request, error)
+	WorkerQueue         WorkerQueue
+	HTTPClient          HTTPClient
+	Logger              Logger
+	RequestMiddlewares  []func(request *Request)
+	ResponseMiddlewares []func(response *Response)
+	Spider              func(response *Response) ([]*Request, error)
 }
 
 func newWorker(
@@ -29,12 +29,12 @@ func newWorker(
 	spider func(response *Response) ([]*Request, error),
 ) *Worker {
 	return &Worker{
-		workerQueue:         workerQueue,
-		httpClient:          httpClient,
-		logger:              logger,
-		requestMiddlewares:  requestMiddlewares,
-		responseMiddlewares: responseMiddlewares,
-		spider:              spider,
+		WorkerQueue:         workerQueue,
+		HTTPClient:          httpClient,
+		Logger:              logger,
+		RequestMiddlewares:  requestMiddlewares,
+		ResponseMiddlewares: responseMiddlewares,
+		Spider:              spider,
 	}
 }
 
@@ -83,7 +83,7 @@ func (w *Worker) StartWithFirstRequest(ctx context.Context, URL string) error {
 
 func (w *Worker) subscribe(ctx context.Context) (<-chan *Request, error) {
 	output := make(chan *Request, channelSize)
-	requestChan, err := w.workerQueue.SubscribeRequests(ctx)
+	requestChan, err := w.WorkerQueue.SubscribeRequests(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("fail to subscribe requests: %w",
 			err)
@@ -92,7 +92,7 @@ func (w *Worker) subscribe(ctx context.Context) (<-chan *Request, error) {
 		defer close(output)
 
 		for request := range requestChan {
-			w.logger.Debugf("subscribe %s", request.URL)
+			w.Logger.Debugf("subscribe %s", request.URL)
 			output <- request
 		}
 	}()
@@ -114,42 +114,49 @@ func (w *Worker) doRequest(requestChan <-chan *Request) (<-chan *Response, error
 				defer requestWaitGroup.Done()
 
 				// apply requestMiddlewares
-				for _, middlewareFunc := range w.requestMiddlewares {
+				for _, middlewareFunc := range w.RequestMiddlewares {
 					middlewareFunc(request)
-					if request == nil {
-						// discard request if nil
-						return
+				}
+
+				var requestRetry bool
+				// send request
+				var response *Response
+				if retry, ok := request.Meta["retry"]; ok {
+					if retryFlag, ok := retry.(bool); retryFlag && ok {
+						requestRetry = true
+					}
+				}
+				if !requestRetry {
+					httpRequest, err := request.HTTPRequest()
+					if err != nil {
+						w.Logger.Warnf("fail to construct http.Request. %v: %v", request, err)
+					} else {
+						w.Logger.Debugf("request %s", httpRequest.URL.String())
+						httpResponse, err := w.HTTPClient.Do(httpRequest)
+						if err != nil {
+							w.Logger.Warnf("fail to get http.Response of http.Request(%v): %v", request, err)
+						} else {
+							response, err = NewResponseFromHTTPResponse(httpResponse)
+							if err != nil {
+								w.Logger.Warnf("fail to construct Response of http.Response(%v): %v", httpResponse, err)
+							}
+						}
 					}
 				}
 
-				// send request
-				httpRequest, err := request.HTTPRequest()
-				if err != nil {
-					w.logger.Warnf("fail to construct http.Request. %v: %v",
-						request, err)
-					return
-				}
-				w.logger.Debugf("request %s", httpRequest.URL.String())
-				httpResponse, err := w.httpClient.Do(httpRequest)
-				if err != nil {
-					w.logger.Warnf("fail to get http.Response of http.Request(%v): %v",
-						request, err)
-					return
-				}
-				response, err := NewResponseFromHTTPResponse(httpResponse)
-				if err != nil {
-					w.logger.Warnf("fail to construct Response of http.Response(%v): %v",
-						httpResponse, err)
-					return
+				if response == nil {
+					// set dummy response
+					response = &Response{
+						StatusCode: 0,
+						Headers:    map[string][]string{},
+						Body:       nil,
+						Request:    request,
+					}
 				}
 
 				// apply responseMiddlewares
-				for _, middlewareFunc := range w.responseMiddlewares {
+				for _, middlewareFunc := range w.ResponseMiddlewares {
 					middlewareFunc(response)
-					if response == nil {
-						// discard response if nil
-						return
-					}
 				}
 
 				responseChan <- response
@@ -171,10 +178,10 @@ func (w *Worker) applySpider(responseChan <-chan *Response) (chan *Request, erro
 	go func() {
 		defer close(requestChan)
 		for response := range responseChan {
-			w.logger.Debugf("apply Spider to %s", response.Request.URL)
-			nextRequests, err := w.spider(response)
+			w.Logger.Debugf("apply Spider to %s", response.Request.URL)
+			nextRequests, err := w.Spider(response)
 			if err != nil {
-				w.logger.Infof("spider error: %v", err)
+				w.Logger.Infof("spider error: %v", err)
 				continue
 			}
 			for _, request := range nextRequests {
@@ -188,10 +195,10 @@ func (w *Worker) applySpider(responseChan <-chan *Response) (chan *Request, erro
 
 func (w *Worker) publishRequest(requestChan <-chan *Request) error {
 	for request := range requestChan {
-		w.logger.Debugf("publish %s", request.URL)
-		err := w.workerQueue.PublishRequest(request)
+		w.Logger.Debugf("publish %s", request.URL)
+		err := w.WorkerQueue.PublishRequest(request)
 		if err != nil {
-			w.logger.Errorf("fail to publish request: %s", request.URL)
+			w.Logger.Errorf("fail to publish request: %s", request.URL)
 		}
 	}
 	return nil
@@ -202,11 +209,11 @@ func (w *Worker) publishRequest(requestChan <-chan *Request) error {
 func (w *Worker) RetryMiddleware(request *Request) {
 	if retry, ok := request.Meta["retry"]; ok {
 		if retryFlag, ok := retry.(bool); retryFlag && ok {
-			err := w.workerQueue.RetryRequest(request)
+			w.Logger.Debugf("retry request %s", request.URL)
+			err := w.WorkerQueue.RetryRequest(request)
 			if err != nil {
-				w.logger.Errorf("fail to retry %s. this request is lost.")
+				w.Logger.Errorf("fail to retry %s. this request is lost.")
 			}
-			request = nil
 		}
 	}
 }
