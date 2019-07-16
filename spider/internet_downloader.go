@@ -18,7 +18,7 @@ func DownloadInternet(response *lucy.Response) ([]*lucy.Request, error) {
 			log.Printf("fail to parse html in %s", response.Request.URL)
 		}
 		title := doc.Find("title").Text()
-		fmt.Printf(title)
+		fmt.Println(title)
 		doc.Find("a").Each(func(_ int, s *goquery.Selection) {
 			link, exists := s.Attr("href")
 			if exists {
