@@ -23,11 +23,11 @@ func TestSimpleCrawler(t *testing.T) {
 		return http.ErrUseLastResponse
 	}
 	workerBuilder.SetHTTPClient(httpClient)
-	queue, err := queue.NewMemoryWorkerQueue()
+	memoryQueue, err := queue.NewMemoryWorkerQueue()
 	if err != nil {
 		log.Fatalf("fail to create queue: %v", err)
 	}
-	workerBuilder.SetWorkerQueue(queue)
+	workerBuilder.SetWorkerQueue(memoryQueue)
 	workerBuilder.SetSpider(spider.DownloadInternet)
 
 	worker, err := workerBuilder.Build()
